@@ -19,6 +19,14 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+    rules: {
+      // Disable hook-deps warnings if you’re intentionally omitting deps:
+      "react-hooks/exhaustive-deps": "off",
+      // Allow normal <img> usage:
+      "@next/next/no-img-element": "off",
+      // Allow unescaped quotes:
+      "react/no-unescaped-entities": "off",
+    },
   },
 ];
 

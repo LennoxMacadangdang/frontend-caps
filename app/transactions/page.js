@@ -90,7 +90,7 @@ const formatPaymentMethod = (method) => {
 };
 
 // Enhanced Orders Component
-export default function transactionsPage() {
+export default function TransactionsPage() {
   const [orders, setOrders] = useState([]);
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
@@ -186,12 +186,13 @@ export default function transactionsPage() {
   const totalAmount = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
   const totalQuantity = orders.reduce((sum, order) => sum + (parseInt(order.total_quantity) || 0), 0);
 
-  useEffect(() => {
-    fetchOrders();
-    
-    const interval = setInterval(() => fetchOrders(false), 30000);
-    return () => clearInterval(interval);
-  }, []);
+
+useEffect(() => {
+  fetchOrders();
+
+  const interval = setInterval(() => fetchOrders(false), 30000);
+  return () => clearInterval(interval);
+}, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
