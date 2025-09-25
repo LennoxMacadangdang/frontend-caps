@@ -82,8 +82,8 @@ export default function AppointmentsPage() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const resUpcoming = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllUpcomingAppointments/pos`);
-      const resHistory = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllHistoryAppointments/pos`);
+      const resUpcoming = await fetch(`${API}/getAllUpcomingAppointments`);
+      const resHistory = await fetch(`${API}/getAllHistoryAppointments`);
       const upcomingData = await resUpcoming.json();
       const historyData = await resHistory.json();
       setUpcoming(upcomingData.upcoming_appointments || []);
