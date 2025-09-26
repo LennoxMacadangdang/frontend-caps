@@ -4,14 +4,14 @@ import { useRouter, usePathname } from "next/navigation";
 
 const API = "https://caps-backend-production-a67c.up.railway.app";
 
-// Sidebar Component (unchanged as requested)
-function Sidebar() {
+// Sidebar Component
+function Sidebar({ onLogout }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      router.replace('/login');
+    if (typeof onLogout === 'function') {
+      onLogout();
     }
   };
 
@@ -70,7 +70,130 @@ function Sidebar() {
   );
 }
 
+// Custom Alert Modal Component (Updated to match POS style)
+function AlertModal({ isOpen, onClose, onConfirm, title, message, type = "confirm", confirmText = "Confirm", cancelText = "Cancel" }) {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case "logout":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        );
+      case "complete":
+        return (
+          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case "cancel":
+      case "delete":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              {getIcon()}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+          <div className="mb-6">
+            <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 rounded-lg transition-all duration-200"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Success/Error Message Modal Component
+function MessageModal({ isOpen, onClose, title, message, type = "success" }) {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    if (type === "success") {
+      return (
+        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    }
+  };
+
+  const getBgColor = () => {
+    return type === "success" ? "bg-green-50" : "bg-red-50";
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className={`flex-shrink-0 w-12 h-12 rounded-full ${getBgColor()} flex items-center justify-center`}>
+              {getIcon()}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+          <div className="mb-6">
+            <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:ring-gray-200 rounded-lg transition-all duration-200"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppointmentsPage() {
+  const router = useRouter();
   const [upcoming, setUpcoming] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,12 +201,31 @@ export default function AppointmentsPage() {
   const [customerName, setCustomerName] = useState("");
   const [showModal, setShowModal] = useState(false);
 
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {}
+  });
+
+  // Success/Error message modal state
+  const [messageModal, setMessageModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
+
   // fetch appointments
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const resUpcoming = await fetch(`${API}/getAllUpcomingAppointments`);
-      const resHistory = await fetch(`${API}/getAllHistoryAppointments`);
+      const resUpcoming = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllUpcomingAppointments/pos`);
+      const resHistory = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllHistoryAppointments/pos`);
       const upcomingData = await resUpcoming.json();
       const historyData = await resHistory.json();
       setUpcoming(upcomingData.upcoming_appointments || []);
@@ -99,38 +241,78 @@ export default function AppointmentsPage() {
     fetchAppointments();
   }, []);
 
-  const completeAppointment = async (id) => {
-    if (!confirm("Mark this appointment as completed?")) return;
-    try {
-      await fetch(`${API}/updateAppointmentStatus/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+  const completeAppointment = (id) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Complete Appointment',
+      message: 'Are you sure you want to mark this appointment as completed?',
+      type: 'complete',
+      confirmText: 'Complete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await fetch(`${API}/updateAppointmentStatus/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          fetchAppointments();
+          setMessageModal({
+            isOpen: true,
+            title: 'Success',
+            message: 'Appointment has been marked as completed successfully.',
+            type: 'success'
+          });
+        } catch (err) {
+          console.error("Error completing appointment", err);
+          setMessageModal({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to complete appointment. Please try again.',
+            type: 'error'
+          });
         }
-      });
-      fetchAppointments();
-      alert("✅ Appointment completed");
-    } catch (err) {
-      console.error("Error completing appointment", err);
-      alert("❌ Failed to complete appointment");
-    }
+      }
+    });
   };
 
-  const cancelAppointment = async (id) => {
-    if (!confirm("Cancel this appointment?")) return;
-    try {
-      await fetch(`${API}/cancelAppointment/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+  const cancelAppointment = (id) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Cancel Appointment',
+      message: 'Are you sure you want to cancel this appointment? This action cannot be undone.',
+      type: 'cancel',
+      confirmText: 'Cancel Appointment',
+      cancelText: 'Keep Appointment',
+      onConfirm: async () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await fetch(`${API}/cancelAppointment/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          fetchAppointments();
+          setMessageModal({
+            isOpen: true,
+            title: 'Cancelled',
+            message: 'Appointment has been cancelled successfully.',
+            type: 'success'
+          });
+        } catch (err) {
+          console.error("Error cancelling appointment", err);
+          setMessageModal({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to cancel appointment. Please try again.',
+            type: 'error'
+          });
         }
-      });
-      fetchAppointments();
-      alert("❌ Appointment cancelled");
-    } catch (err) {
-      console.error("Error cancelling appointment", err);
-      alert("❌ Failed to cancel appointment");
-    }
+      }
+    });
   };
 
   const openReceipt = (appt) => {
@@ -146,7 +328,12 @@ export default function AppointmentsPage() {
 
   const printReceipt = () => {
     if (!customerName.trim()) {
-      alert("Please enter customer name");
+      setMessageModal({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please enter customer name before printing the receipt.',
+        type: 'error'
+      });
       return;
     }
     if (!selectedAppt) return;
@@ -177,8 +364,21 @@ export default function AppointmentsPage() {
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar with logout functionality */}
+      <Sidebar onLogout={() => {
+        setAlertModal({
+          isOpen: true,
+          title: 'Confirm Logout',
+          message: 'Are you sure you want to logout? You will be redirected to the login page.',
+          type: 'logout',
+          confirmText: 'Logout',
+          cancelText: 'Cancel',
+          onConfirm: () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            router.replace('/login');
+          }
+        });
+      }} />
       
       {/* Main Content with enhanced layout */}
       <div className="ml-64 flex-1 p-8 transition-all duration-300 ease-in-out">
@@ -496,6 +696,27 @@ export default function AppointmentsPage() {
             </div>
           </div>
         )}
+
+        {/* Custom Alert Modal */}
+        <AlertModal
+          isOpen={alertModal.isOpen}
+          onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={alertModal.onConfirm}
+          title={alertModal.title}
+          message={alertModal.message}
+          type={alertModal.type}
+          confirmText={alertModal.confirmText}
+          cancelText={alertModal.cancelText}
+        />
+
+        {/* Success/Error Message Modal */}
+        <MessageModal
+          isOpen={messageModal.isOpen}
+          onClose={() => setMessageModal(prev => ({ ...prev, isOpen: false }))}
+          title={messageModal.title}
+          message={messageModal.message}
+          type={messageModal.type}
+        />
       </div>
     </div>
   );

@@ -4,14 +4,14 @@ import { useRouter, usePathname } from "next/navigation";
 
 const API_URL = "https://caps-backend-production-f8d8.up.railway.app/api/orders";
 
-// Sidebar Component (Unchanged as requested)
-function Sidebar() {
+// Sidebar Component
+function Sidebar({ onLogout }) {
   const router = useRouter();
   const pathname = usePathname();
-
+  
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      router.replace('/login');
+    if (typeof onLogout === 'function') {
+      onLogout();
     }
   };
 
@@ -79,6 +79,121 @@ function LoadingSpinner() {
   );
 }
 
+// Custom Alert Modal Component (Updated to match POS style)
+function AlertModal({ isOpen, onClose, onConfirm, title, message, type = "confirm", confirmText = "Confirm", cancelText = "Cancel" }) {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case "logout":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        );
+      case "delete":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              {getIcon()}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+          <div className="mb-6">
+            <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 rounded-lg transition-all duration-200"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Success/Error Message Modal Component
+function MessageModal({ isOpen, onClose, title, message, type = "success" }) {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    if (type === "success") {
+      return (
+        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    }
+  };
+
+  const getBgColor = () => {
+    return type === "success" ? "bg-green-50" : "bg-red-50";
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className={`flex-shrink-0 w-12 h-12 rounded-full ${getBgColor()} flex items-center justify-center`}>
+              {getIcon()}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+          <div className="mb-6">
+            <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:ring-4 focus:ring-gray-200 rounded-lg transition-all duration-200"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Helper function to format payment method display
 const formatPaymentMethod = (method) => {
   if (!method) return 'N/A';
@@ -89,11 +204,183 @@ const formatPaymentMethod = (method) => {
   return method;
 };
 
+// Receipt format function extracted from POS system
+function prepareReceiptHtml(order) {
+  const items = order?.items ? order.items.split(", ") : [];
+  
+  // Parse items to extract quantity, name, and price
+  const parsedItems = items.map((itemStr, index) => {
+    let qty = 1, name = itemStr;
+    
+    // Pattern 1: "1x Product Name (₱100.00)"
+    const fullMatch = itemStr.match(/^(\d+)x\s(.+?)\s\(₱([\d,]+\.?\d*)\)$/);
+    if (fullMatch) {
+      const [, quantity, itemName, totalPrice] = fullMatch;
+      const unitPrice = parseFloat(totalPrice.replace(/,/g, '')) / parseInt(quantity);
+      return {
+        qty: parseInt(quantity),
+        name: itemName,
+        unitPrice: unitPrice,
+        totalPrice: parseFloat(totalPrice.replace(/,/g, ''))
+      };
+    }
+    
+    // Pattern 2: "1x Product Name"
+    const qtyMatch = itemStr.match(/^(\d+)x\s(.+)$/);
+    if (qtyMatch) {
+      qty = parseInt(qtyMatch[1]);
+      name = qtyMatch[2];
+    }
+    
+    // Pattern 3: "Product Name" (no quantity)
+    if (!qtyMatch) {
+      const nameOnly = itemStr.trim();
+      if (nameOnly) name = nameOnly;
+    }
+    
+    // Calculate price from total order amount divided by number of items
+    const totalOrderAmount = parseFloat(order.total_amount || 0);
+    const totalItemsCount = items.length;
+    const estimatedUnitPrice = totalItemsCount > 0 ? (totalOrderAmount / totalItemsCount) / qty : 0;
+    const estimatedTotalPrice = estimatedUnitPrice * qty;
+    
+    return {
+      qty: qty,
+      name: name,
+      unitPrice: estimatedUnitPrice,
+      totalPrice: estimatedTotalPrice
+    };
+  });
+
+  // Generate items table rows
+  const itemsHtml = parsedItems
+    .map(item => 
+      `<tr>
+        <td style="text-align: center; padding: 2px 4px; border-bottom: 1px dotted #ccc;">${item.qty}</td>
+        <td style="padding: 2px 4px; border-bottom: 1px dotted #ccc;">${item.name}</td>
+        <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${item.unitPrice.toFixed(2)}</td>
+        <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${item.totalPrice.toFixed(2)}</td>
+      </tr>`
+    ).join("");
+
+  const date = new Date(order.order_date || Date.now()).toLocaleString("en-US", {
+    year: "numeric",
+    month: "long", 
+    day: "numeric"
+  });
+
+  const currentYear = new Date().getFullYear();
+  const orNumber = `OR-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+  const ptuNumber = `PTU-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+  const atpNumber = `ATP No. ${currentYear}-ATP-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+
+  const paymentMethodText = (formatPaymentMethod(order.payment_method)).toUpperCase();
+  const isCashPayment = order.payment_method && order.payment_method.toLowerCase() === 'cash';
+
+  return `
+    <div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; color: #000; max-width: 350px; margin: 0 auto; padding: 10px; background: white;">
+      <!-- Header Section -->
+      <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">OTTO BRIGHT POS SYSTEM</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Business Name: OTTO BRIGHT CARWASH SERVICES</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Trade Name: Otto Bright Auto Care</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Business Addr: Metro Manila, Philippines</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Tel. No.: (02) 8123-4567</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">TIN: 123-456-789-000</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">VAT Status: NON-VAT Registered</div>
+      </div>
+
+      <!-- Transaction Details -->
+      <div style="margin-bottom: 10px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>OR No.:</span>
+          <span>${orNumber}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>Date Issued:</span>
+          <span>${date}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>Permit to Use:</span>
+          <span>${ptuNumber}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span>ATP / Printer:</span>
+          <span>${atpNumber}</span>
+        </div>
+      </div>
+
+      <!-- Customer Information -->
+      <div style="margin-bottom: 15px; padding: 8px; background: #f9f9f9; border: 1px solid #ddd;">
+        <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">Sold to:</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Customer Name: ${order.name || "Walk-in Customer"}</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Order ID: ${order.order_id || "N/A"}</div>
+      </div>
+
+      <!-- Items Table -->
+      <div style="margin-bottom: 15px;">
+        <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px 0;">
+          <table style="width: 100%; font-size: 10px;">
+            <thead>
+              <tr style="font-weight: bold;">
+                <th style="text-align: center; width: 15%; padding: 2px;">Qty</th>
+                <th style="text-align: left; width: 45%; padding: 2px;">Particulars</th>
+                <th style="text-align: right; width: 20%; padding: 2px;">Unit Price</th>
+                <th style="text-align: right; width: 20%; padding: 2px;">Amount</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+        
+        <table style="width: 100%; font-size: 10px;">
+          <tbody>
+            ${itemsHtml || '<tr><td colspan="4" style="text-align: center; padding: 10px;">No items</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals Section -->
+      <div style="border-top: 2px solid #000; padding-top: 10px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: bold;">
+          <span>Total Amount Due:</span>
+          <span>₱${parseFloat(order.total_amount || 0).toFixed(2)}</span>
+        </div>
+      </div>
+
+      <!-- Payment Details -->
+      <div style="margin-bottom: 15px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+          <span>Payment Mode:</span>
+          <span style="font-weight: bold;">${paymentMethodText}</span>
+        </div>
+        ${order.reference_number ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+          <span>Reference No:</span>
+          <span>${order.reference_number}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- Footer -->
+      <div style="text-align: center; font-size: 9px; color: #666; border-top: 1px solid #ccc; padding-top: 8px;">
+        <div style="margin-bottom: 3px;">Thank you for your business!</div>
+        <div style="margin-bottom: 3px;">Please keep this receipt for your records.</div>
+        <div>For inquiries, please contact us at the above number.</div>
+      </div>
+
+      ${order.payment_proof ? `
+      <div style="margin-top: 15px; text-align: center; border-top: 1px dashed #ccc; padding-top: 10px;">
+        <div style="font-size: 10px; margin-bottom: 5px; font-weight: bold;">Payment Proof:</div>
+        <img src="${order.payment_proof}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;"/>
+      </div>
+      ` : ''}
+    </div>`;
+}
+
 // Enhanced Orders Component
 export default function TransactionsPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
-  const [message, setMessage] = useState(null);
-  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("order_date");
@@ -101,29 +388,48 @@ export default function TransactionsPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedProof, setSelectedProof] = useState(null);
 
-  // Success message handler
-  const showSuccess = (msg) => {
-    setMessage(msg);
-    setTimeout(() => setMessage(null), 4000);
-  };
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {}
+  });
 
-  // Error message handler
-  const showError = (msg) => {
-    setError(msg);
-    setTimeout(() => setError(null), 4000);
-  };
+  // Success/Error message modal state
+  const [messageModal, setMessageModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'success'
+  });
 
   // Fetch orders
-  const fetchOrders = async (showLoadingSpinner = true) => {
+  const fetchOrders = async (showLoadingSpinner = true, showSuccessMessage = false) => {
     try {
       if (showLoadingSpinner) setLoading(true);
       const res = await fetch(API_URL);
       const data = await res.json();
       setOrders(data);
-      if (showLoadingSpinner) showSuccess("Orders loaded successfully!");
+      if (showSuccessMessage) {
+        setMessageModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Orders loaded successfully!',
+          type: 'success'
+        });
+      }
     } catch (err) {
       console.error("Error fetching orders:", err);
-      showError("Error fetching orders. Please try again.");
+      setMessageModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Error fetching orders. Please try again.',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -140,21 +446,74 @@ export default function TransactionsPage() {
     setShowModal(false);
     setSelectedProof(null);
   };
-  const removeOrder = async (id) => {
-    if (!confirm("Are you sure you want to remove this order? This action cannot be undone.")) return;
 
-    try {
-      await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-      fetchOrders(false);
-      showSuccess("Order removed successfully!");
-    } catch (err) {
-      console.error("Error removing order:", err);
-      showError("Error removing order. Please try again.");
+  const removeOrder = (id) => {
+  setAlertModal({
+    isOpen: true,
+    title: 'Remove Order',
+    message: 'Are you sure you want to remove this order? This action cannot be undone.',
+    type: 'delete',
+    confirmText: 'Remove Order',
+    cancelText: 'Cancel',
+    onConfirm: async () => {
+      setAlertModal(prev => ({ ...prev, isOpen: false }));
+      try {
+        await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+        fetchOrders(false);
+        setMessageModal({
+          isOpen: true,
+          title: 'Success',
+          message: 'Order removed successfully!',
+          type: 'success'
+        });
+      } catch (err) {
+        console.error("Error removing order:", err);
+        setMessageModal({
+          isOpen: true,
+          title: 'Error',
+          message: 'Error removing order. Please try again.',
+          type: 'error'
+        });
+      }
     }
-  };
+  });
+};
 
-  // Sort orders
-  const sortOrders = (field) => {
+// Print receipt function
+const printReceipt = (order) => {
+  const printWindow = window.open('', '_blank');
+  
+  const receiptContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Receipt - Order #${order.order_id}</title>
+        <style>
+            body { margin: 0; padding: 20px; }
+            @media print { 
+                .no-print { display: none; } 
+                body { margin: 0; padding: 10px; }
+            }
+        </style>
+    </head>
+    <body>
+        ${prepareReceiptHtml(order)}
+        <div class="no-print" style="text-align: center; margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: bold; margin-right: 10px;">Print Receipt</button>
+            <button onclick="window.close()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: bold;">Close</button>
+        </div>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.write(receiptContent);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+};
+
+// Sort orders
+const sortOrders = (field) => {
     const direction = sortField === field && sortDirection === "asc" ? "desc" : "asc";
     setSortField(field);
     setSortDirection(direction);
@@ -186,18 +545,29 @@ export default function TransactionsPage() {
   const totalAmount = orders.reduce((sum, order) => sum + (parseFloat(order.total_amount) || 0), 0);
   const totalQuantity = orders.reduce((sum, order) => sum + (parseInt(order.total_quantity) || 0), 0);
 
-
-useEffect(() => {
-  fetchOrders();
-
-  const interval = setInterval(() => fetchOrders(false), 30000);
-  return () => clearInterval(interval);
-}, []);
+  useEffect(() => {
+    fetchOrders();
+    const interval = setInterval(() => fetchOrders(false), 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar with logout functionality */}
+      <Sidebar onLogout={() => {
+        setAlertModal({
+          isOpen: true,
+          title: 'Confirm Logout',
+          message: 'Are you sure you want to logout? You will be redirected to the login page.',
+          type: 'logout',
+          confirmText: 'Logout',
+          cancelText: 'Cancel',
+          onConfirm: () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            router.replace('/login');
+          }
+        });
+      }} />
       
       {/* Main Content */}
       <div className="ml-64 flex-1 transition-all duration-300 ease-in-out">
@@ -211,11 +581,9 @@ useEffect(() => {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-gray-500">Last updated</p>
-                <p suppressHydrationWarning className="text-sm font-medium text-gray-900"
->
-  {new Date().toLocaleTimeString()}
-</p>
-
+                <p suppressHydrationWarning className="text-sm font-medium text-gray-900">
+                  {new Date().toLocaleTimeString()}
+                </p>
               </div>
             </div>
           </div>
@@ -267,24 +635,6 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Success/Error messages */}
-          {message && (
-            <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 flex items-center">
-              <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="text-green-800">{message}</span>
-            </div>
-          )}
-          {error && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-red-800">{error}</span>
-            </div>
-          )}
-
           {/* Controls */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -303,7 +653,7 @@ useEffect(() => {
                 </div>
               </div>
               <button
-                onClick={() => fetchOrders()}
+                onClick={() => fetchOrders(true, true)}
                 disabled={loading}
                 className="flex items-center px-6 py-3 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -461,16 +811,27 @@ useEffect(() => {
                             })()}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <button
-                              onClick={() => removeOrder(order.order_id)}
-                              className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                            >
-                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                              Remove
-                            </button>
-                          </td>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => printReceipt(order)}
+                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print
+                                  </button>
+                                  <button
+                                    onClick={() => removeOrder(order.order_id)}
+                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                  >
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Remove
+                                  </button>
+                                </div>
+                              </td>
                         </tr>
                       ))
                     )}
@@ -558,6 +919,27 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {/* Custom Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertModal.onConfirm}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+      />
+
+      {/* Success/Error Message Modal */}
+      <MessageModal
+        isOpen={messageModal.isOpen}
+        onClose={() => setMessageModal(prev => ({ ...prev, isOpen: false }))}
+        title={messageModal.title}
+        message={messageModal.message}
+        type={messageModal.type}
+      />
     </div>
   );
 }

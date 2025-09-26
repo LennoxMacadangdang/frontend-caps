@@ -1,21 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, usePathname } from "next/navigation"; // <-- add this
+import { useRouter, usePathname } from "next/navigation";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Calendar, DollarSign, TrendingUp, ShoppingCart, LogOut, CreditCard, Users, BarChart3 } from 'lucide-react';
 
 // API Configuration
 const API_BASE_URL = 'https://caps-backend-production-10f9.up.railway.app';
 
-// Sidebar Component with Icons (Unchanged as requested)
-function Sidebar() {
+// Sidebar Component with Icons (Updated with logout functionality)
+function Sidebar({ onLogout }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      router.replace('/login');
+    if (typeof onLogout === 'function') {
+      onLogout();
     }
   };
 
@@ -74,9 +74,71 @@ function Sidebar() {
   );
 }
 
+// Custom Alert Modal Component (Matching POS style)
+function AlertModal({ isOpen, onClose, onConfirm, title, message, type = "confirm", confirmText = "Confirm", cancelText = "Cancel" }) {
+  if (!isOpen) return null;
+
+  const getIcon = () => {
+    switch (type) {
+      case "logout":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        );
+      case "delete":
+        return (
+          <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+        <div className="p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              {getIcon()}
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
+          </div>
+          <div className="mb-6">
+            <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 rounded-lg transition-all duration-200"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Main Analytics Component
 export default function SalesAnalytics() {
+  const router = useRouter();
   const [salesData, setSalesData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState('2025-01-01');
@@ -85,6 +147,17 @@ export default function SalesAnalytics() {
 
   // Daily sales data for charts
   const [dailySalesData, setDailySalesData] = useState([]);
+
+  // Alert modal state
+  const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {}
+  });
 
   const fetchSalesData = async () => {
     setLoading(true);
@@ -186,7 +259,21 @@ export default function SalesAnalytics() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      {/* Sidebar with logout functionality */}
+      <Sidebar onLogout={() => {
+        setAlertModal({
+          isOpen: true,
+          title: 'Confirm Logout',
+          message: 'Are you sure you want to logout? You will be redirected to the login page.',
+          type: 'logout',
+          confirmText: 'Logout',
+          cancelText: 'Cancel',
+          onConfirm: () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            router.replace('/login');
+          }
+        });
+      }} />
       
       {/* Main Content */}
       <div className="ml-64 flex-1 p-8">
@@ -399,6 +486,18 @@ export default function SalesAnalytics() {
           )}
         </div>
       </div>
+
+      {/* Custom Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={alertModal.onConfirm}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        confirmText={alertModal.confirmText}
+        cancelText={alertModal.cancelText}
+      />
     </div>
   );
 }

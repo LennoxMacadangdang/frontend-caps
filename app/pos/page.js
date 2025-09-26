@@ -6,15 +6,15 @@ import { useRouter, usePathname } from "next/navigation";
 const API_BASE = "https://caps-backend-production-4086.up.railway.app";
 
 // Sidebar Component with Icons (Unchanged as requested)
-function Sidebar() {
+function Sidebar({ onLogout }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-      router.replace('/login');
+    if (typeof onLogout === 'function') {
+        onLogout();
     }
-  };
+};
 
   const navButtonClass = (path) =>
     `flex items-center w-full px-5 py-4 mb-3 rounded-lg text-base font-medium transition-all duration-300 cursor-pointer ${
@@ -91,7 +91,7 @@ function FloatingCartButton({ totalItems, onClick }) {
 }
 
 // Cart Modal Component (Enhanced with quantity controls)
-function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt }) {
+function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt, showReceiptInModal, setShowReceiptInModal, prepareReceiptHtml, orderCompleted, setOrderCompleted }) {
     if (!isOpen) return null;
 
     function groupCartItems(arr) {
@@ -106,7 +106,7 @@ function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem,
    
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col border border-gray-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col border border-gray-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-red-800 to-red-900 text-white">
                     <h2 className="text-xl font-bold">Shopping Cart</h2>
@@ -194,7 +194,6 @@ function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem,
                                 <option value="cash"> 💵  Cash</option>
                                 <option value="gcash"> 📱  GCash</option>
                                 <option value="paymaya"> 💳  PayMaya</option>
-                                <option value="card"> 💳  Card (upload proof)</option>
                             </select>
 
                             {paymentMethod === "cash" && (
@@ -215,23 +214,128 @@ function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem,
                             )}
                            
                             <div className="flex gap-3">
-                                <button disabled={isProcessing} onClick={onCheckout} className={`flex-1 py-4 rounded-xl text-white font-semibold transition-all duration-300 ${isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-red-800 to-red-900 hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"}`}>
+                                <button disabled={isProcessing} onClick={onCheckout} className={`w-full py-4 rounded-xl text-white font-semibold transition-all duration-300 ${isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-red-800 to-red-900 hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"}`}>
                                     {isProcessing ? "Processing..." : "Complete Order"}
                                 </button>
-                                {lastOrder && (
-                                    <button onClick={onPrintReceipt} className="py-4 px-6 rounded-xl bg-amber-500 text-white hover:bg-amber-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1" title="Print Last Receipt">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                    </button>
-                                )}
-                            </div>
+                         </div>
                         </div>
+
+                        {/* Receipt Display */}
+                        {showReceiptInModal && lastOrder && (
+                            <div className="border-t p-6 bg-gray-50 mt-6">
+                              <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-800">Order Receipt</h3>
+                                <button  
+                                      onClick={() => {
+                                        setShowReceiptInModal(false);
+                                        if (orderCompleted) {
+                                            window.location.reload();
+                                        }
+                                        setOrderCompleted(false);
+                                        onClose();
+                                      }}
+                                      className="text-gray-500 hover:text-gray-700"
+                                    >
+                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                              
+                              <div className="bg-white p-4 rounded-lg border max-h-48 overflow-y-auto">
+                                <div dangerouslySetInnerHTML={{ __html: prepareReceiptHtml(lastOrder) }} />
+                              </div>
+                              
+                              <div className="flex gap-3 mt-4">
+                                <button 
+                                  onClick={onPrintReceipt}
+                                  className="flex-1 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-semibold"
+                                >
+                                  Print Receipt
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                      setShowReceiptInModal(false);
+                                      if (orderCompleted) {
+                                          window.location.reload();
+                                      }
+                                      setOrderCompleted(false);
+                                      onClose();
+                                    }}
+                                    className="flex-1 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold"
+                                >
+                                    Close
+                                </button>
+                              </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
         </div>
     );
 }
+// Custom Alert Modal Component
+function AlertModal({ isOpen, onClose, onConfirm, title, message, type = "confirm", confirmText = "Confirm", cancelText = "Cancel" }) {
+    if (!isOpen) return null;
 
+    const getIcon = () => {
+        switch (type) {
+            case "logout":
+                return (
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                );
+            case "delete":
+                return (
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                );
+            default:
+                return (
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                );
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 transform transition-all">
+                <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                            {getIcon()}
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                        </div>
+                    </div>
+                    <div className="mb-6">
+                        <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+                        >
+                            {cancelText}
+                        </button>
+                        <button
+                            onClick={onConfirm}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 rounded-lg transition-all duration-200"
+                        >
+                            {confirmText}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 export default function PosPage() {
     const router = useRouter();
     
@@ -266,7 +370,19 @@ export default function PosPage() {
     
     // Last order & receipt
     const [lastOrder, setLastOrder] = useState(null);
+    const [showReceiptInModal, setShowReceiptInModal] = useState(false);
+    const [orderCompleted, setOrderCompleted] = useState(false);
     const receiptRef = useRef(null);
+    // Alert modal state
+const [alertModal, setAlertModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: () => {}
+});
 
     // Initialize and load data automatically
     useEffect(() => {
@@ -324,7 +440,7 @@ export default function PosPage() {
     // ---- API LOADERS ----
     async function loadProducts() {
         try {
-            const res = await fetch(`${API_BASE}/products`);
+            const res = await fetch(`https://carwash-backend-production-ec15.up.railway.app/api/products/category/1`);
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             setProducts(data || []);
@@ -336,7 +452,7 @@ export default function PosPage() {
 
     async function loadServices() {
         try {
-            const res = await fetch(`${API_BASE}/services`);
+            const res = await fetch(`https://carwash-backend-production-2f26.up.railway.app/api/services`);
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             setServices(data || []);
@@ -383,24 +499,39 @@ export default function PosPage() {
     }
 
     // ---- CART OPERATIONS ----
-    async function addToCart(id, type, size = null, name = null, price = null) {
-        try {
-            const body = { id, type, quantity: 1, size: size || null };
-            const res = await fetch(`${API_BASE}/cart/addtocart`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const result = await res.json();
-            if (result.error) throw new Error(result.error);
-            await loadCart();
-            showMessage("Item added to cart!", "success");
-        } catch (err) {
-            console.error("addToCart", err);
-            showMessage("Failed to add to cart: " + err.message, "error");
-        }
+async function addToCart(id, type, size = null, name = null, price = null) {
+    try {
+        const body = { 
+            id, 
+            type, 
+            quantity: 1, 
+            size: size || null,
+            name: name || null,
+            price: price || null
+        };
+
+        console.log("📦 Sending body to /cart/addtocart:", body);
+
+        const res = await fetch(`${API_BASE}/cart/addtocart`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+
+        await loadCart();
+        showMessage("Item added to cart!", "success");
+    } catch (err) {
+        console.error("addToCart", err);
+        showMessage("Failed to add to cart: " + err.message, "error");
     }
+}
+
+
+
 
     async function removeFromCart(id, type, size = null) {
         try {
@@ -419,36 +550,56 @@ export default function PosPage() {
     }
    
     // NEW: Function to remove all units of a specific item
-    async function removeAllOfItemFromCart(id, type, size = null) {
-        if (!confirm(`Are you sure you want to remove all units of this item?`)) return;
-        try {
-            const res = await fetch(`${API_BASE}/cart/remove-item`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, type, size: size || null }),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            await loadCart();
-            showMessage("Item removed from cart", "success");
-        } catch (err) {
-            console.error("removeAllOfItemFromCart", err);
-            showMessage("Failed to remove item: " + err.message, "error");
+    function showRemoveItemConfirm(id, type, size = null) {
+    setAlertModal({
+        isOpen: true,
+        title: 'Remove Item',
+        message: 'Are you sure you want to remove all units of this item from the cart?',
+        type: 'delete',
+        confirmText: 'Remove',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            try {
+                const res = await fetch(`${API_BASE}/cart/remove-one`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, type, size: size || null }),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                await loadCart();
+                showMessage("Item removed from cart", "success");
+            } catch (err) {
+                console.error("removeAllOfItemFromCart", err);
+                showMessage("Failed to remove item: " + err.message, "error");
+            }
         }
-    }
+    });
+}
 
-    async function clearCart() {
-        if (!confirm("Are you sure you want to clear the cart?")) return;
-        try {
-            const res = await fetch(`${API_BASE}/cart/clear`, { method: "POST" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            await loadCart();
-            setLastOrder(null);
-            showMessage("Cart cleared", "success");
-        } catch (err) {
-            console.error("clearCart", err);
-            showMessage("Failed to clear cart", "error");
+   function showClearCartConfirm() {
+    setAlertModal({
+        isOpen: true,
+        title: 'Clear Cart',
+        message: 'Are you sure you want to clear the cart? This action cannot be undone.',
+        type: 'delete',
+        confirmText: 'Clear Cart',
+        cancelText: 'Cancel',
+        onConfirm: async () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            try {
+                const res = await fetch(`${API_BASE}/cart/clear`, { method: "POST" });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                await loadCart();
+                setLastOrder(null);
+                showMessage("Cart cleared", "success");
+            } catch (err) {
+                console.error("clearCart", err);
+                showMessage("Failed to clear cart", "error");
+            }
         }
-    }
+    });
+}
 
     function selectServiceSize(serviceId, size, price) {
         setSelectedServiceSizes((prev) => ({
@@ -551,18 +702,21 @@ export default function PosPage() {
             order.reference_number = payload.reference_number;
             setLastOrder(order);
 
-            showMessage("Order completed successfully!", "success");
-            await loadCart();
-            await loadProducts();
+           showMessage("Order completed successfully!", "success");
 
-            // reset inputs
-            const cInput = document.getElementById("customerName");
-            if (cInput) cInput.value = "";
-            setPaymentProofFile(null);
-            setReferenceNumber("");
-            setPaymentMethod("cash");
-            setCashAmount("");
-            setIsCartModalOpen(false);
+                  // Show receipt immediately and mark order as completed
+                  setShowReceiptInModal(true);
+                  setOrderCompleted(true);
+
+                // reset inputs but DON'T reload cart yet
+                const cInput = document.getElementById("customerName");
+                if (cInput) cInput.value = "";
+                setPaymentProofFile(null);
+                setReferenceNumber("");
+                setPaymentMethod("cash");
+                setCashAmount("");
+
+// DON'T call loadCart() here - let the cart stay until modal closes   
         } catch (err) {
             console.error("checkout error", err);
             showMessage("Checkout failed: " + err.message, "error");
@@ -573,39 +727,190 @@ export default function PosPage() {
 
     // ---- RECEIPT & PRINT ----
     function prepareReceiptHtml(order) {
-        const items = order?.items ? order.items.split(", ") : [];
-        const itemsHtml = items
-            .map(
-                (it) =>
-                `<li style="margin:5px 0;padding:5px 0;border-bottom:1px dotted #ccc;">${it}</li>`
-            )
-            .join("");
-
-        const date = new Date(order.order_date || Date.now()).toLocaleString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-
-        return `
-            <div style="font-family:Segoe UI, Tahoma, Verdana, sans-serif; color:#333; padding:20px;">
-                <h2 style="text-align:center;">Otto Bright - Receipt</h2>
-                <p><strong>Date:</strong> ${date}</p>
-                <p><strong>Order ID:</strong> ${order.order_id || "N/A"}</p>
-                <p><strong>Customer:</strong> ${order.customer_name || "Walk-in Customer"}</p>
-                <p><strong>Items:</strong></p>
-                <ul style="padding-left:18px;">${itemsHtml || "<li>No items</li>"}</ul>
-                <p><strong>Qty:</strong> ${order.total_quantity || 0}</p>
-                <p><strong>Amount:</strong> ₱${parseFloat(order.total_amount || 0).toFixed(2)}</p>
-                <p><strong>Payment:</strong> ${order.payment_method_display || ""}</p>
-                <p><strong>Cash Received:</strong> ₱${(order.cash_received || 0).toFixed(2)}</p>
-                <p><strong>Change:</strong> ₱${(order.change_amount || 0).toFixed(2)}</p>
-                ${order.reference_number ? `<p><strong>Ref:</strong> ${order.reference_number}</p>` : ""}
-                ${order.payment_proof ? `<div style="margin-top:10px;"><img src="${order.payment_proof}" style="max-width:200px;border:2px solid #e31e24;border-radius:8px;"/></div>` : ""}
-            </div>`;
+    const items = order?.items ? order.items.split(", ") : [];
+    
+    // Parse items to extract quantity, name, and price
+// Since backend doesn't include prices in items string, we'll calculate from cart data
+const parsedItems = items.map((itemStr, index) => {
+    // Try multiple parsing patterns
+    let qty = 1, name = itemStr;
+    
+    // Pattern 1: "1x Product Name (₱100.00)"
+    const fullMatch = itemStr.match(/^(\d+)x\s(.+?)\s\(₱([\d,]+\.?\d*)\)$/);
+    if (fullMatch) {
+        const [, quantity, itemName, totalPrice] = fullMatch;
+        const unitPrice = parseFloat(totalPrice.replace(/,/g, '')) / parseInt(quantity);
+        return {
+            qty: parseInt(quantity),
+            name: itemName,
+            unitPrice: unitPrice,
+            totalPrice: parseFloat(totalPrice.replace(/,/g, ''))
+        };
     }
+    
+    // Pattern 2: "1x Product Name"
+    const qtyMatch = itemStr.match(/^(\d+)x\s(.+)$/);
+    if (qtyMatch) {
+        qty = parseInt(qtyMatch[1]);
+        name = qtyMatch[2];
+    }
+    
+    // Pattern 3: "Product Name" (no quantity)
+    if (!qtyMatch) {
+        const nameOnly = itemStr.trim();
+        if (nameOnly) name = nameOnly;
+    }
+    
+    // Calculate price from total order amount divided by number of items
+    // This is a fallback when individual prices aren't available
+    const totalOrderAmount = parseFloat(order.total_amount || 0);
+    const totalItemsCount = items.length;
+    const estimatedUnitPrice = totalItemsCount > 0 ? (totalOrderAmount / totalItemsCount) / qty : 0;
+    const estimatedTotalPrice = estimatedUnitPrice * qty;
+    
+    return {
+        qty: qty,
+        name: name,
+        unitPrice: estimatedUnitPrice,
+        totalPrice: estimatedTotalPrice
+    };
+});
+
+    // Generate items table rows
+    const itemsHtml = parsedItems
+        .map(item => 
+            `<tr>
+                <td style="text-align: center; padding: 2px 4px; border-bottom: 1px dotted #ccc;">${item.qty}</td>
+                <td style="padding: 2px 4px; border-bottom: 1px dotted #ccc;">${item.name}</td>
+                <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${item.unitPrice.toFixed(2)}</td>
+                <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${item.totalPrice.toFixed(2)}</td>
+            </tr>`
+        ).join("");
+
+    const date = new Date(order.order_date || Date.now()).toLocaleString("en-US", {
+        year: "numeric",
+        month: "long", 
+        day: "numeric"
+    });
+
+    const currentYear = new Date().getFullYear();
+    const orNumber = `OR-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+    const ptuNumber = `PTU-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+    const atpNumber = `ATP No. ${currentYear}-ATP-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+
+    // Determine payment method display
+    const paymentMethodText = (order.payment_method_display || "CASH").toUpperCase();
+    const isCashPayment = order.payment_method_display && order.payment_method_display.toLowerCase().includes('cash');
+
+    return `
+        <div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; color: #000; max-width: 350px; margin: 0 auto; padding: 10px; background: white;">
+            <!-- Header Section -->
+            <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">OTTO BRIGHT POS SYSTEM</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Business Name: OTTO BRIGHT CARWASH SERVICES</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Trade Name: Otto Bright Auto Care</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Business Addr: Metro Manila, Philippines</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Tel. No.: (02) 8123-4567</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">TIN: 123-456-789-000</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">VAT Status: NON-VAT Registered</div>
+            </div>
+
+            <!-- Transaction Details -->
+            <div style="margin-bottom: 10px; font-size: 11px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span>OR No.:</span>
+                    <span>${orNumber}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span>Date Issued:</span>
+                    <span>${date}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                    <span>Permit to Use:</span>
+                    <span>${ptuNumber}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span>ATP / Printer:</span>
+                    <span>${atpNumber}</span>
+                </div>
+            </div>
+
+            <!-- Customer Information -->
+            <div style="margin-bottom: 15px; padding: 8px; background: #f9f9f9; border: 1px solid #ddd;">
+                <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">Sold to:</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Customer Name: ${order.customer_name || "Walk-in Customer"}</div>
+                <div style="font-size: 11px; margin-bottom: 2px;">Order ID: ${order.order_id || "N/A"}</div>
+            </div>
+
+            <!-- Items Table -->
+            <div style="margin-bottom: 15px;">
+                <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px 0;">
+                    <table style="width: 100%; font-size: 10px;">
+                        <thead>
+                            <tr style="font-weight: bold;">
+                                <th style="text-align: center; width: 15%; padding: 2px;">Qty</th>
+                                <th style="text-align: left; width: 45%; padding: 2px;">Particulars</th>
+                                <th style="text-align: right; width: 20%; padding: 2px;">Unit Price</th>
+                                <th style="text-align: right; width: 20%; padding: 2px;">Amount</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+                
+                <table style="width: 100%; font-size: 10px;">
+                    <tbody>
+                        ${itemsHtml || '<tr><td colspan="4" style="text-align: center; padding: 10px;">No items</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Totals Section -->
+            <div style="border-top: 2px solid #000; padding-top: 10px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: bold;">
+                    <span>Total Amount Due:</span>
+                    <span>₱${parseFloat(order.total_amount || 0).toFixed(2)}</span>
+                </div>
+            </div>
+
+            <!-- Payment Details -->
+            <div style="margin-bottom: 15px; font-size: 11px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span>Payment Mode:</span>
+                    <span style="font-weight: bold;">${paymentMethodText}</span>
+                </div>
+                ${isCashPayment ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span>Amount Received:</span>
+                    <span>₱${(order.cash_received || 0).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span>Change Given:</span>
+                    <span>₱${(order.change_amount || 0).toFixed(2)}</span>
+                </div>
+                ` : ''}
+                ${order.reference_number ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                    <span>Reference No:</span>
+                    <span>${order.reference_number}</span>
+                </div>
+                ` : ''}
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; font-size: 9px; color: #666; border-top: 1px solid #ccc; padding-top: 8px;">
+                <div style="margin-bottom: 3px;">Thank you for your business!</div>
+                <div style="margin-bottom: 3px;">Please keep this receipt for your records.</div>
+                <div>For inquiries, please contact us at the above number.</div>
+            </div>
+
+            ${order.payment_proof ? `
+            <div style="margin-top: 15px; text-align: center; border-top: 1px dashed #ccc; padding-top: 10px;">
+                <div style="font-size: 10px; margin-bottom: 5px; font-weight: bold;">Payment Proof:</div>
+                <img src="${order.payment_proof}" style="max-width: 200px; max-height: 150px; border: 1px solid #ddd; border-radius: 4px;"/>
+            </div>
+            ` : ''}
+        </div>`;
+}
 
     function printReceipt() {
         if (!lastOrder) {
@@ -655,16 +960,31 @@ export default function PosPage() {
     function showMessage(text, type = "success") {
         setMessage(text);
         setMessageType(type);
-        setTimeout(() => {
-            setMessage(null);
-        }, 4000);
+        const timer = setTimeout(() => {
+    setMessage(null);
+}, 4000);
+
+return () => clearTimeout(timer);
     }
 
     // ---- RENDER ----
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex">
             {/* Sidebar */}
-            <Sidebar />
+          <Sidebar onLogout={() => {
+    setAlertModal({
+        isOpen: true,
+        title: 'Confirm Logout',
+        message: 'Are you sure you want to logout? You will be redirected to the login page.',
+        type: 'logout',
+        confirmText: 'Logout',
+        cancelText: 'Cancel',
+        onConfirm: () => {
+            setAlertModal(prev => ({ ...prev, isOpen: false }));
+            router.replace('/login');
+        }
+    });
+}} />
 
             {/* Main Content */}
             <div className="ml-64 flex-1 transition-all duration-300 ease-in-out">
@@ -751,7 +1071,7 @@ export default function PosPage() {
                     Total: <span className="font-bold text-red-700 text-2xl ml-2">₱{grandTotal.toFixed(2)}</span>
                 </div>
             </div>
-            <button onClick={clearCart} disabled={cart.length === 0}
+           <button onClick={showClearCartConfirm} disabled={cart.length === 0}
                 className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
                     cart.length === 0
                     ? "bg-gray-200 text-gray-400 cursor-not-allowed"
@@ -1021,26 +1341,45 @@ export default function PosPage() {
 
             {/* Cart Modal */}
             <CartModal 
-                isOpen={isCartModalOpen}
-                onClose={() => setIsCartModalOpen(false)}
-                cart={cart}
-                grandTotal={grandTotal}
-                onAddItem={addToCart}
-                onRemoveItem={removeFromCart}
-                onRemoveAllOfItem={removeAllOfItemFromCart}
-                onCheckout={checkout}
-                isProcessing={isProcessing}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                cashAmount={cashAmount}
-                setCashAmount={setCashAmount}
-                referenceNumber={referenceNumber}
-                setReferenceNumber={setReferenceNumber}
-                paymentProofFile={paymentProofFile}
-                setPaymentProofFile={setPaymentProofFile}
-                lastOrder={lastOrder}
-                onPrintReceipt={printReceipt}
-            />
+                    isOpen={isCartModalOpen}
+                    onClose={() => {
+                    setIsCartModalOpen(false);
+                    setShowReceiptInModal(false);
+
+                            // If an order was completed, refresh the page to update stock levels
+                            if (orderCompleted) {
+                                window.location.reload();
+                            } else {
+                                // Just reload cart data if no order was completed
+                                loadCart();
+                            }
+                            
+                            // Reset the order completed flag
+                            setOrderCompleted(false);
+                        }}
+                    cart={cart}
+                    grandTotal={grandTotal}
+                    onAddItem={addToCart}
+                    onRemoveItem={removeFromCart}
+                    onRemoveAllOfItem={showRemoveItemConfirm}
+                    onCheckout={checkout}
+                    isProcessing={isProcessing}
+                    paymentMethod={paymentMethod}
+                    setPaymentMethod={setPaymentMethod}
+                    cashAmount={cashAmount}
+                    setCashAmount={setCashAmount}
+                    referenceNumber={referenceNumber}
+                    setReferenceNumber={setReferenceNumber}
+                    paymentProofFile={paymentProofFile}
+                    setPaymentProofFile={setPaymentProofFile}
+                    lastOrder={lastOrder}
+                    onPrintReceipt={printReceipt}
+                    showReceiptInModal={showReceiptInModal}
+                    setShowReceiptInModal={setShowReceiptInModal}
+                    prepareReceiptHtml={prepareReceiptHtml}
+                    orderCompleted={orderCompleted}
+                    setOrderCompleted={setOrderCompleted}
+                />
 
             {/* Hidden Receipt Template */}
             <div ref={receiptRef} className="hidden">
@@ -1048,6 +1387,18 @@ export default function PosPage() {
                     <div dangerouslySetInnerHTML={{ __html: prepareReceiptHtml(lastOrder) }} />
                 )}
             </div>
+
+            {/* Custom Alert Modal */}
+            <AlertModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={alertModal.onConfirm}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+                confirmText={alertModal.confirmText}
+                cancelText={alertModal.cancelText}
+            />
         </div>
     );
 }
