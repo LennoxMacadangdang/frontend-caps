@@ -353,10 +353,10 @@ function prepareReceiptHtml(order) {
           <span>Payment Mode:</span>
           <span style="font-weight: bold;">${paymentMethodText}</span>
         </div>
-        ${order.reference_number ? `
+        ${order.payment_proof ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
           <span>Reference No:</span>
-          <span>${order.reference_number}</span>
+          <span>${order.payment_proof}</span>
         </div>
         ` : ''}
       </div>
@@ -407,6 +407,64 @@ export default function TransactionsPage() {
     type: 'success'
   });
 
+  const printReceipt = (order) => {
+  try {
+    const receiptHtml = prepareReceiptHtml(order);
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    
+    if (!printWindow) {
+      alert('Popup blocked! Please allow popups for this site to print receipts.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt - Order #${order.order_id}</title>
+          <style>
+            body { 
+              margin: 0; 
+              padding: 0; 
+              font-family: 'Courier New', monospace;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            @media print {
+              @page { margin: 0; }
+              body { margin: 0.5cm; }
+            }
+          </style>
+        </head>
+        <body>
+          ${receiptHtml}
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 100);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+
+  } catch (error) {
+    console.error('Error printing receipt:', error);
+    setMessageModal({
+      isOpen: true,
+      title: 'Print Error',
+      message: 'Failed to print receipt. Please try again.',
+      type: 'error'
+    });
+  }
+};
+
   // Fetch orders
   const fetchOrders = async (showLoadingSpinner = true, showSuccessMessage = false) => {
     try {
@@ -448,72 +506,39 @@ export default function TransactionsPage() {
   };
 
   const removeOrder = (id) => {
-  setAlertModal({
-    isOpen: true,
-    title: 'Remove Order',
-    message: 'Are you sure you want to remove this order? This action cannot be undone.',
-    type: 'delete',
-    confirmText: 'Remove Order',
-    cancelText: 'Cancel',
-    onConfirm: async () => {
-      setAlertModal(prev => ({ ...prev, isOpen: false }));
-      try {
-        await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-        fetchOrders(false);
-        setMessageModal({
-          isOpen: true,
-          title: 'Success',
-          message: 'Order removed successfully!',
-          type: 'success'
-        });
-      } catch (err) {
-        console.error("Error removing order:", err);
-        setMessageModal({
-          isOpen: true,
-          title: 'Error',
-          message: 'Error removing order. Please try again.',
-          type: 'error'
-        });
+    setAlertModal({
+      isOpen: true,
+      title: 'Remove Order',
+      message: 'Are you sure you want to remove this order? This action cannot be undone.',
+      type: 'delete',
+      confirmText: 'Remove Order',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          fetchOrders(false);
+          setMessageModal({
+            isOpen: true,
+            title: 'Success',
+            message: 'Order removed successfully!',
+            type: 'success'
+          });
+        } catch (err) {
+          console.error("Error removing order:", err);
+          setMessageModal({
+            isOpen: true,
+            title: 'Error',
+            message: 'Error removing order. Please try again.',
+            type: 'error'
+          });
+        }
       }
-    }
-  });
-};
+    });
+  };
 
-// Print receipt function
-const printReceipt = (order) => {
-  const printWindow = window.open('', '_blank');
-  
-  const receiptContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Receipt - Order #${order.order_id}</title>
-        <style>
-            body { margin: 0; padding: 20px; }
-            @media print { 
-                .no-print { display: none; } 
-                body { margin: 0; padding: 10px; }
-            }
-        </style>
-    </head>
-    <body>
-        ${prepareReceiptHtml(order)}
-        <div class="no-print" style="text-align: center; margin-top: 20px;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: bold; margin-right: 10px;">Print Receipt</button>
-            <button onclick="window.close()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: bold;">Close</button>
-        </div>
-    </body>
-    </html>
-  `;
-  
-  printWindow.document.write(receiptContent);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 500);
-};
-
-// Sort orders
-const sortOrders = (field) => {
+  // Sort orders
+  const sortOrders = (field) => {
     const direction = sortField === field && sortDirection === "asc" ? "desc" : "asc";
     setSortField(field);
     setSortDirection(direction);
@@ -770,7 +795,11 @@ const sortOrders = (field) => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             {(() => {
                               const paymentMethod = order.payment_method?.toLowerCase();
-                              
+                              // Convert numeric reference to string safely
+                              const refNum = order.reference_number !== undefined && order.reference_number !== null 
+                              ? String(order.reference_number) 
+                              : null;
+
                               if (paymentMethod === 'cash') {
                                 return (
                                   <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-green-600 bg-green-50">
@@ -781,35 +810,30 @@ const sortOrders = (field) => {
                                   </span>
                                 );
                               }
-                              
+
                               if (paymentMethod === 'gcash' || paymentMethod === 'paymaya') {
-                                if (order.payment_proof) {
-                                  return (
-                                    <button
-                                      onClick={() => showPaymentProof(order.payment_proof)}
-                                      className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
-                                    >
-                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h4a1 1 0 011 1v2m-5 3v11a2 2 0 002 2h6a2 2 0 002-2V7H7z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 11h4" />
-                                      </svg>
-                                      Reference #
-                                    </button>
-                                  );
-                                } else {
-                                  return (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 bg-blue-50">
-                                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h4a1 1 0 011 1v2m-5 3v11a2 2 0 002 2h6a2 2 0 002-2V7H7z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 11h4" />
-                                      </svg>
-                                      Reference #
-                                    </span>
-                                  );
-                                }
+                                return (
+                                  <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 bg-blue-50">
+                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {refNum ? `Ref: ${refNum}` : 'No Reference'}
+                                  </span>
+                                );
                               }
+
+                              return (
+                                <span className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-gray-600 bg-gray-50">
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  Unknown
+                                </span>
+                              );
                             })()}
                           </td>
+
+
                           <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex gap-2">
                                   <button

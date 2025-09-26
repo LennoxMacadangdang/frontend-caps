@@ -192,6 +192,116 @@ function MessageModal({ isOpen, onClose, title, message, type = "success" }) {
   );
 }
 
+// Professional receipt format for appointments
+function prepareAppointmentReceiptHtml(order, appointment) {
+  const date = new Date(order.order_date).toLocaleString("en-US", {
+    year: "numeric",
+    month: "long", 
+    day: "numeric"
+  });
+
+  const currentYear = new Date().getFullYear();
+  const orNumber = `OR-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+  const ptuNumber = `PTU-${currentYear}-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+  const atpNumber = `ATP No. ${currentYear}-ATP-${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+
+  return `
+    <div style="font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.3; color: #000; max-width: 350px; margin: 0 auto; padding: 10px; background: white;">
+      <!-- Header Section -->
+      <div style="text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+        <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">OTTO BRIGHT POS SYSTEM</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Business Name: OTTO BRIGHT CARWASH SERVICES</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Trade Name: Otto Bright Auto Care</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Business Addr: Metro Manila, Philippines</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Tel. No.: (02) 8123-4567</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">TIN: 123-456-789-000</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">VAT Status: NON-VAT Registered</div>
+      </div>
+
+      <!-- Transaction Details -->
+      <div style="margin-bottom: 10px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>OR No.:</span>
+          <span>${orNumber}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>Date Issued:</span>
+          <span>${date}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+          <span>Permit to Use:</span>
+          <span>${ptuNumber}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+          <span>ATP / Printer:</span>
+          <span>${atpNumber}</span>
+        </div>
+      </div>
+
+      <!-- Customer Information -->
+      <div style="margin-bottom: 15px; padding: 8px; background: #f9f9f9; border: 1px solid #ddd;">
+        <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">Sold to:</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Customer Name: ${order.name}</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Appointment ID: ${order.order_id}</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Vehicle: ${appointment.vehicleBrand || ''} ${appointment.vehicleModel || ''} (${appointment.vehicleColor || ''})</div>
+      </div>
+
+      <!-- Services Table -->
+      <div style="margin-bottom: 15px;">
+        <div style="border-top: 2px solid #000; border-bottom: 1px solid #000; padding: 5px 0;">
+          <table style="width: 100%; font-size: 10px;">
+            <thead>
+              <tr style="font-weight: bold;">
+                <th style="text-align: center; width: 15%; padding: 2px;">Qty</th>
+                <th style="text-align: left; width: 45%; padding: 2px;">Service</th>
+                <th style="text-align: right; width: 20%; padding: 2px;">Unit Price</th>
+                <th style="text-align: right; width: 20%; padding: 2px;">Amount</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+        
+        <table style="width: 100%; font-size: 10px;">
+          <tbody>
+            <tr>
+              <td style="text-align: center; padding: 2px 4px; border-bottom: 1px dotted #ccc;">1</td>
+              <td style="padding: 2px 4px; border-bottom: 1px dotted #ccc;">${appointment.service_name}</td>
+              <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${parseFloat(order.total_amount || 0).toFixed(2)}</td>
+              <td style="text-align: right; padding: 2px 4px; border-bottom: 1px dotted #ccc;">₱${parseFloat(order.total_amount || 0).toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Totals Section -->
+      <div style="border-top: 2px solid #000; padding-top: 10px; margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: bold;">
+          <span>Total Amount Due:</span>
+          <span>₱${parseFloat(order.total_amount || 0).toFixed(2)}</span>
+        </div>
+      </div>
+
+      <!-- Payment Details -->
+      <div style="margin-bottom: 15px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+          <span>Payment Mode:</span>
+          <span style="font-weight: bold;">APPOINTMENT BOOKING</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+          <span>Service Date:</span>
+          <span>${appointment.date} at ${appointment.time}</span>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="text-align: center; font-size: 9px; color: #666; border-top: 1px solid #ccc; padding-top: 8px;">
+        <div style="margin-bottom: 3px;">Thank you for choosing Otto Bright!</div>
+        <div style="margin-bottom: 3px;">Please arrive 15 minutes before your appointment.</div>
+        <div>For inquiries, please contact us at the above number.</div>
+      </div>
+    </div>`;
+}
+
 export default function AppointmentsPage() {
   const router = useRouter();
   const [upcoming, setUpcoming] = useState([]);
@@ -327,40 +437,57 @@ export default function AppointmentsPage() {
   };
 
   const printReceipt = () => {
-    if (!customerName.trim()) {
-      setMessageModal({
-        isOpen: true,
-        title: 'Missing Information',
-        message: 'Please enter customer name before printing the receipt.',
-        type: 'error'
-      });
-      return;
-    }
-    if (!selectedAppt) return;
+  if (!customerName.trim()) {
+    setMessageModal({
+      isOpen: true,
+      title: 'Missing Information',
+      message: 'Please enter customer name before printing the receipt.',
+      type: 'error'
+    });
+    return;
+  }
+  if (!selectedAppt) return;
 
-    const receiptHtml = `
-      <div style="font-family: Arial; padding: 20px; max-width: 400px;">
-        <h2 style="text-align:center; color:#dc3545;">OTTO <span style="color:#ffc107;">BRIGHT</span></h2>
-        <h3 style="text-align:center;">Service Receipt</h3>
-        <p><b>Customer:</b> ${customerName}</p>
-        <p><b>Service:</b> ${selectedAppt.service_name}</p>
-        <p><b>Date:</b> ${selectedAppt.date}</p>
-        <p><b>Time:</b> ${selectedAppt.time}</p>
-        <p><b>Vehicle:</b> ${selectedAppt.vehicleBrand || ""} ${selectedAppt.vehicleModel || ""} (${selectedAppt.vehicleColor || ""})</p>
-        <p><b>Total:</b> ₱${selectedAppt.price || "N/A"}</p>
-        <hr/>
-        <p style="text-align:center; color:#dc3545;">Thank you for your business!</p>
-      </div>
-    `;
-
-    const w = window.open("", "_blank", "width=500,height=600");
-    w.document.write(receiptHtml);
-    w.document.close();
-    w.focus();
-    w.print();
-    w.close();
-    closeReceipt();
+  // Create appointment order object compatible with receipt format
+  const appointmentOrder = {
+    order_id: `APPT-${selectedAppt.appointment_id}`,
+    name: customerName,
+    order_date: `${selectedAppt.date}T${selectedAppt.time}:00`,
+    total_amount: selectedAppt.price || 0,
+    payment_method: 'cash',
+    items: `1x ${selectedAppt.service_name}`
   };
+
+  const receiptContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Appointment Receipt - ${appointmentOrder.order_id}</title>
+        <style>
+            body { margin: 0; padding: 20px; }
+            @media print { 
+                .no-print { display: none; } 
+                body { margin: 0; padding: 10px; }
+            }
+        </style>
+    </head>
+    <body>
+        ${prepareAppointmentReceiptHtml(appointmentOrder, selectedAppt)}
+        <div class="no-print" style="text-align: center; margin-top: 20px;">
+            <button onclick="window.print()" style="padding: 10px 20px; background: #991b1b; color: white; border: none; border-radius: 8px; font-weight: bold; margin-right: 10px;">Print Receipt</button>
+            <button onclick="window.close()" style="padding: 10px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: bold;">Close</button>
+        </div>
+    </body>
+    </html>
+  `;
+  
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(receiptContent);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+  closeReceipt();
+};
 
   return (
     <div className="flex bg-gray-50 min-h-screen">

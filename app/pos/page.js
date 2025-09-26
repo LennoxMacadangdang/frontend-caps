@@ -248,11 +248,11 @@ function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem,
                               
                               <div className="flex gap-3 mt-4">
                                 <button 
-                                  onClick={onPrintReceipt}
-                                  className="flex-1 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-semibold"
-                                >
-                                  Print Receipt
-                                </button>
+                                      onClick={onPrintReceipt}
+                                      className="flex-1 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                                    >
+                                      Print Receipt
+                                    </button>
                                 <button 
                                     onClick={() => {
                                       setShowReceiptInModal(false);
