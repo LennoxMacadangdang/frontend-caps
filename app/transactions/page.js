@@ -23,11 +23,21 @@ function Sidebar({ onLogout }) {
     }`;
 
   return (
-    <div className="fixed top-0 left-0 w-64 h-screen bg-gray-100 border-r-4 border-red-800 shadow-lg z-50 flex flex-col py-5 transition-transform duration-300 ease-in-out">
-      <div className="px-5 pb-8 border-b-2 border-gray-300 mb-5">
-        <h1 className="text-2xl font-bold text-red-800 text-center">
-          Otto Bright POS
-        </h1>
+        <div className="fixed top-0 left-0 w-64 h-screen bg-gray-100 border-r-4 border-red-800 shadow-lg z-50 flex flex-col py-2 transition-transform duration-300 ease-in-out">
+        {/* Company Logo Section */}
+        <div className="px-2 pb-2 border-b-1 border-gray-300 mb-5">
+            {/* Company Logo Section */}
+            <div className="flex flex-col items-center ">
+            {/* Logo image above sidebar content */}
+            <div className="w-full h-20 bg-black flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
+    <img
+        src="https://url-shortener.me/5SGQ"
+        alt="Otto Bright Logo"
+        className="w-full h-full object-contain m-0 p-1"
+    />
+    </div>
+
+        </div>
       </div>
       <nav className="flex-1 flex flex-col px-3">
         <button onClick={() => router.push('/pos')} className={navButtonClass('pos')}>
@@ -670,7 +680,7 @@ export default function TransactionsPage() {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search by customer name, order ID, or payment method..."
+                    placeholder="Search by customer name or payment method..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors"
