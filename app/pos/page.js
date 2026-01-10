@@ -3,9 +3,186 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-const API_BASE = "https://caps-backend-production-4086.up.railway.app";
+const API_BASE = "https://caps-backend-production-59fe.up.railway.app";
 
-// Sidebar Component with Icons (Unchanged as requested)
+// Side Panel Component for Selected Items
+function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt, showReceiptInModal, setShowReceiptInModal, prepareReceiptHtml, orderCompleted, setOrderCompleted, onClearCart }) {
+    function groupCartItems(arr) {
+        const grouped = {};
+        arr.forEach((item) => {
+            const key = `${item.type}_${item.id}${item.size ? `_${item.size}` : ""}`;
+            if (grouped[key]) grouped[key].quantity += item.quantity;
+            else grouped[key] = { ...item };
+        });
+        return Object.values(grouped);
+    }
+   
+    return (
+        <div className="fixed right-0 top-0 w-96 h-screen bg-white border-l-4 border-red-800 shadow-2xl z-40 flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-800 to-red-900 text-white p-6 border-b">
+                <h2 className="text-xl font-bold">Current Order</h2>
+                <p className="text-sm text-red-100 mt-1">Select items to add to order</p>
+            </div>
+
+            {/* Cart Items */}
+            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                {groupCartItems(cart).length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                         <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                         </svg>
+                         <p className="text-lg font-medium">No items selected</p>
+                         <p className="text-sm mt-1">Click on items to add them</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {groupCartItems(cart).map((item) => (
+                            <div key={`${item.type}_${item.id}_${item.size}`} className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm">
+                                <div className="flex-1 pr-4">
+                                    <div className="font-semibold text-gray-800">{item.name}</div>
+                                    <div className="text-sm text-gray-500">
+                                        {item.type.toUpperCase()}
+                                        {item.size ? ` (${item.size.toUpperCase()})` : ""}
+                                    </div>
+                                    <div className="text-sm font-medium text-red-600 mt-1">
+                                        ₱{parseFloat(item.price || 0).toFixed(2)} each
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    {/* Quantity Controls */}
+                                    <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
+                                        <button onClick={() => onRemoveItem(item.id, item.type, item.size || null)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-800 hover:bg-red-200 font-bold transition-colors hover:scale-110">-</button>
+                                        <span className="w-8 text-center font-semibold text-gray-700">{item.quantity}</span>
+                                        <button onClick={() => onAddItem(item.id, item.type, item.size || null, item.name, item.price)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-800 hover:bg-green-200 font-bold transition-colors hover:scale-110">+</button>
+                                    </div>
+
+                                    {/* Remove All Button */}
+                                    <button onClick={() => onRemoveAllOfItem(item.id, item.type, item.size || null)} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-100 transition-colors" title="Remove all from cart">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Checkout Section */}
+            {groupCartItems(cart).length > 0 && (
+                <div className="border-t p-4 bg-white">
+                    <div className="mb-4">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-lg font-semibold text-gray-700">Total:</span>
+                            <span className="text-3xl font-bold text-red-800">₱{grandTotal.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        {/* Customer Name Input */}
+                        <div className="relative">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                                <div className="w-5 h-5 bg-red-100 rounded-md flex items-center justify-center">
+                                    <svg className="h-3 w-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <input id="customerName"
+                                placeholder="Customer name (optional)"
+                                className="w-full p-3 pl-14 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm text-sm"
+                            />
+                        </div>
+
+                        {/* Payment Method */}
+                        <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm text-sm">
+                            <option value="cash"> 💵  Cash</option>
+                            <option value="gcash"> 📱  GCash</option>
+                            <option value="paymaya"> 💳  PayMaya</option>
+                        </select>
+
+                        {paymentMethod === "cash" && (
+                            <input type="number" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Cash received" className="w-full p-3 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm text-sm" />
+                        )}
+
+                        {(paymentMethod === "gcash" || paymentMethod === "paymaya") && (
+                            <div className="relative">
+                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                                </div>
+                                <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number" className="w-full p-3 pl-10 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm text-sm" />
+                            </div>
+                        )}
+                       
+                        <div className="flex gap-2">
+                            <button disabled={isProcessing} onClick={onCheckout} className={`flex-1 py-3 rounded-xl text-white font-semibold transition-all duration-300 text-sm ${isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-red-800 to-red-900 hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"}`}>
+                                {isProcessing ? "Processing..." : "Complete Order"}
+                            </button>
+                            <button onClick={onClearCart} className="px-4 py-3 rounded-xl text-red-800 bg-red-100 hover:bg-red-200 font-semibold transition-all duration-300 text-sm">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Receipt Display */}
+                    {showReceiptInModal && lastOrder && (
+                        <div className="border-t p-4 bg-gray-50 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-gray-800">Order Receipt</h3>
+                            <button  
+                                  onClick={() => {
+                                    setShowReceiptInModal(false);
+                                    if (orderCompleted) {
+                                        window.location.reload();
+                                    }
+                                    setOrderCompleted(false);
+                                  }}
+                                  className="text-gray-500 hover:text-gray-700"
+                                >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          
+                          <div className="bg-white p-3 rounded-lg border max-h-40 overflow-y-auto text-xs">
+                            <div dangerouslySetInnerHTML={{ __html: prepareReceiptHtml(lastOrder) }} />
+                          </div>
+                          
+                          <div className="flex gap-2 mt-3">
+                            <button 
+                                  onClick={onPrintReceipt}
+                                  className="flex-1 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm"
+                                >
+                                  Print Receipt
+                                </button>
+                            <button 
+                                onClick={() => {
+                                  setShowReceiptInModal(false);
+                                  if (orderCompleted) {
+                                      window.location.reload();
+                                  }
+                                  setOrderCompleted(false);
+                                }}
+                                className="flex-1 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold text-sm"
+                            >
+                                Close
+                            </button>
+                          </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Sidebar Component with Icons
 function Sidebar({ onLogout }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -14,7 +191,7 @@ function Sidebar({ onLogout }) {
     if (typeof onLogout === 'function') {
         onLogout();
     }
-};
+  };
 
   const navButtonClass = (path) =>
     `flex items-center w-full px-5 py-4 mb-3 rounded-lg text-base font-medium transition-all duration-300 cursor-pointer ${
@@ -26,15 +203,15 @@ function Sidebar({ onLogout }) {
   return (
         <div className="fixed top-0 left-0 w-64 h-screen bg-gray-100 border-r-4 border-red-800 shadow-lg z-50 flex flex-col py-2 transition-transform duration-300 ease-in-out">
         {/* Company Logo Section */}
-        <div className="px-2 pb-2 border-b-1 border-gray-300 mb-5">
+        <div className="px-1 pb-1 border-b-2 border-gray-300 mb-5">
             {/* Company Logo Section */}
             <div className="flex flex-col items-center ">
             {/* Logo image above sidebar content */}
-            <div className="w-full h-20 bg-black flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
+            <div className="w-full h-30 bg-grey flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
     <img
-        src="https://url-shortener.me/5SGQ"
+        src="https://i.ibb.co/Jwq72QFQ/download.png"
         alt="Otto Bright Logo"
-        className="w-full h-full object-contain m-0 p-1"
+        className="w-full h-full object-contain m-0 p--5"
     />
     </div>
 
@@ -79,211 +256,6 @@ function Sidebar({ onLogout }) {
       </div>
     </div>
   );
-}
-
-// Floating Cart Button Component
-function FloatingCartButton({ totalItems, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-6 right-6 bg-red-800 hover:bg-red-900 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-40 flex items-center gap-3 hover:scale-110"
-    >
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-      </svg>
-      {totalItems > 0 && (
-        <span className="bg-white text-red-800 px-2 py-1 rounded-full text-sm font-bold min-w-[24px] text-center animate-pulse">
-          {totalItems}
-        </span>
-      )}
-    </button>
-  );
-}
-
-// Cart Modal Component (Enhanced with quantity controls)
-function CartModal({ isOpen, onClose, cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt, showReceiptInModal, setShowReceiptInModal, prepareReceiptHtml, orderCompleted, setOrderCompleted }) {
-    if (!isOpen) return null;
-
-    function groupCartItems(arr) {
-        const grouped = {};
-        arr.forEach((item) => {
-            const key = `${item.type}_${item.id}${item.size ? `_${item.size}` : ""}`;
-            if (grouped[key]) grouped[key].quantity += item.quantity;
-            else grouped[key] = { ...item };
-        });
-        return Object.values(grouped);
-    }
-   
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto flex flex-col border border-gray-200">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-red-800 to-red-900 text-white">
-                    <h2 className="text-xl font-bold">Shopping Cart</h2>
-                    <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors p-1 rounded-lg hover:bg-white hover:bg-opacity-20">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Cart Items */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-                    {groupCartItems(cart).length === 0 ? (
-                        <div className="text-center py-12 text-gray-400">
-                             <svg className="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-                             </svg>
-                             <p className="text-lg font-medium">Your cart is empty</p>
-                             <p className="text-sm mt-1">Add some items to get started</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {groupCartItems(cart).map((item) => (
-                                <div key={`${item.type}_${item.id}_${item.size}`} className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm">
-                                    <div className="flex-1 pr-4">
-                                        <div className="font-semibold text-gray-800">{item.name}</div>
-                                        <div className="text-sm text-gray-500">
-                                            {item.type.toUpperCase()}
-                                            {item.size ? ` (${item.size.toUpperCase()})` : ""}
-                                        </div>
-                                        <div className="text-sm font-medium text-red-600 mt-1">
-                                            ₱{parseFloat(item.price || 0).toFixed(2)} each
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        {/* Quantity Controls */}
-                                        <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
-                                            <button onClick={() => onRemoveItem(item.id, item.type, item.size || null)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-800 hover:bg-red-200 font-bold transition-colors hover:scale-110">-</button>
-                                            <span className="w-8 text-center font-semibold text-gray-700">{item.quantity}</span>
-                                            <button onClick={() => onAddItem(item.id, item.type, item.size || null, item.name, item.price)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-800 hover:bg-green-200 font-bold transition-colors hover:scale-110">+</button>
-                                        </div>
-
-                                        {/* Remove All Button */}
-                                        <button onClick={() => onRemoveAllOfItem(item.id, item.type, item.size || null)} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-100 transition-colors" title="Remove all from cart">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                {/* Checkout Section */}
-                {groupCartItems(cart).length > 0 && (
-                    <div className="border-t p-6 bg-white">
-                        <div className="mb-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-lg font-semibold text-gray-700">Total:</span>
-                                <span className="text-3xl font-bold text-red-800">₱{grandTotal.toFixed(2)}</span>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {/* Customer Name Input */}
-                            <div className="relative">
-                                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                                    <div className="w-5 h-5 bg-red-100 rounded-md flex items-center justify-center">
-                                        <svg className="h-3 w-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                                <input id="customerName"
-                                    placeholder="Customer name (optional)"
-                                    className="w-full p-4 pl-14 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm"
-                                />
-                            </div>
-
-                            {/* Payment Method */}
-                            <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm">
-                                <option value="cash"> 💵  Cash</option>
-                                <option value="gcash"> 📱  GCash</option>
-                                <option value="paymaya"> 💳  PayMaya</option>
-                            </select>
-
-                            {paymentMethod === "cash" && (
-                                <input type="number" step="0.01" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="Cash received" className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm" />
-                            )}
-
-                            {(paymentMethod === "gcash" || paymentMethod === "paymaya") && (
-                                <div className="relative">
-                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
-                                    </div>
-                                    <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number" className="w-full p-4 pl-10 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-200 focus:border-red-500 transition-all duration-200 bg-white shadow-sm" />
-                                </div>
-                            )}
-
-                            {paymentMethod === "card" && (
-                                <input type="file" accept="image/*" onChange={(e) => setPaymentProofFile(e.target.files[0] || null)} className="w-full p-4 border-2 border-gray-200 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 transition-all duration-200 bg-white shadow-sm" />
-                            )}
-                           
-                            <div className="flex gap-3">
-                                <button disabled={isProcessing} onClick={onCheckout} className={`w-full py-4 rounded-xl text-white font-semibold transition-all duration-300 ${isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-gradient-to-r from-red-800 to-red-900 hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"}`}>
-                                    {isProcessing ? "Processing..." : "Complete Order"}
-                                </button>
-                         </div>
-                        </div>
-
-                        {/* Receipt Display */}
-                        {showReceiptInModal && lastOrder && (
-                            <div className="border-t p-6 bg-gray-50 mt-6">
-                              <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-gray-800">Order Receipt</h3>
-                                <button  
-                                      onClick={() => {
-                                        setShowReceiptInModal(false);
-                                        if (orderCompleted) {
-                                            window.location.reload();
-                                        }
-                                        setOrderCompleted(false);
-                                        onClose();
-                                      }}
-                                      className="text-gray-500 hover:text-gray-700"
-                                    >
-                                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                  </svg>
-                                </button>
-                              </div>
-                              
-                              <div className="bg-white p-4 rounded-lg border max-h-48 overflow-y-auto">
-                                <div dangerouslySetInnerHTML={{ __html: prepareReceiptHtml(lastOrder) }} />
-                              </div>
-                              
-                              <div className="flex gap-3 mt-4">
-                                <button 
-                                      onClick={onPrintReceipt}
-                                      className="flex-1 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
-                                    >
-                                      Print Receipt
-                                    </button>
-                                <button 
-                                    onClick={() => {
-                                      setShowReceiptInModal(false);
-                                      if (orderCompleted) {
-                                          window.location.reload();
-                                      }
-                                      setOrderCompleted(false);
-                                      onClose();
-                                    }}
-                                    className="flex-1 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold"
-                                >
-                                    Close
-                                </button>
-                              </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
 }
 // Custom Alert Modal Component
 function AlertModal({ isOpen, onClose, onConfirm, title, message, type = "confirm", confirmText = "Confirm", cancelText = "Cancel" }) {
@@ -359,8 +331,6 @@ export default function PosPage() {
     
     // UI state
     const [currentSection, setCurrentSection] = useState("checkout");
-    const [isCartModalOpen, setIsCartModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
     
     // Order summary
     const [subtotal, setSubtotal] = useState(0);
@@ -379,10 +349,12 @@ export default function PosPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     
     // Last order & receipt
-    const [lastOrder, setLastOrder] = useState(null);
+   const [lastOrder, setLastOrder] = useState(null);
     const [showReceiptInModal, setShowReceiptInModal] = useState(false);
     const [orderCompleted, setOrderCompleted] = useState(false);
     const receiptRef = useRef(null);
+    const [searchQuery, setSearchQuery] = useState("");  // ADD THIS LINE
+    
     // Alert modal state
 const [alertModal, setAlertModal] = useState({
     isOpen: false,
@@ -450,7 +422,7 @@ const [alertModal, setAlertModal] = useState({
     // ---- API LOADERS ----
     async function loadProducts() {
         try {
-            const res = await fetch(`https://carwash-backend-production-ec15.up.railway.app/api/products/category/1`);
+            const res = await fetch(`https://caps-backend-production-59fe.up.railway.app/products`);
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             setProducts(data || []);
@@ -462,7 +434,7 @@ const [alertModal, setAlertModal] = useState({
 
     async function loadServices() {
         try {
-            const res = await fetch(`https://carwash-backend-production-2f26.up.railway.app/api/services`);
+            const res = await fetch(`https://caps-backend-production-59fe.up.railway.app/services`);
             if (!res.ok) throw new Error(`${res.status}`);
             const data = await res.json();
             setServices(data || []);
@@ -544,7 +516,16 @@ async function addToCart(id, type, size = null, name = null, price = null) {
 
 
     async function removeFromCart(id, type, size = null) {
-        try {
+    try {
+        // Find the item in the cart to check its current quantity
+        const cartKey = createCartItemKey(id, type, size);
+        const groupedCart = groupCartItems(cart);
+        const currentItem = groupedCart.find(item => 
+            createCartItemKey(item.id, item.type, item.size || null) === cartKey
+        );
+
+        // If quantity is 1, remove the item completely
+        if (currentItem && currentItem.quantity === 1) {
             const res = await fetch(`${API_BASE}/cart/remove-one`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -552,12 +533,34 @@ async function addToCart(id, type, size = null, name = null, price = null) {
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             await loadCart();
-            showMessage("Item quantity updated", "success");
-        } catch (err) {
-            console.error("removeFromCart", err);
-            showMessage("Failed to update item quantity", "error");
+            showMessage("Item removed from cart", "success");
+            return;
         }
+
+        // Otherwise, decrement by 1
+        const body = { 
+            id, 
+            type, 
+            quantity: -1,
+            size: size || null
+        };
+
+        const res = await fetch(`${API_BASE}/cart/addtocart`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        if (result.error) throw new Error(result.error);
+        
+        await loadCart();
+        showMessage("Item quantity updated", "success");
+    } catch (err) {
+        console.error("removeFromCart", err);
+        showMessage("Failed to update item quantity", "error");
     }
+}
    
     // NEW: Function to remove all units of a specific item
     function showRemoveItemConfirm(id, type, size = null) {
@@ -997,7 +1000,7 @@ return () => clearTimeout(timer);
 }} />
 
             {/* Main Content */}
-            <div className="ml-64 flex-1 transition-all duration-300 ease-in-out">
+            <div className="ml-64 mr-96 flex-1 transition-all duration-300 ease-in-out">
                 {/* Top Navigation Bar */}
                {/* Filter buttons with icons - FIXED ICON ISSUE */}
 {/* Top Navigation Bar - PROPERLY STRUCTURED */}
@@ -1047,7 +1050,7 @@ return () => clearTimeout(timer);
                 </button>
             </div>
 
-            {/* Search Bar */}
+          {/* Search Bar */}
             <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1073,27 +1076,8 @@ return () => clearTimeout(timer);
                 )}
             </div>
         </div>
-
-        {/* Right side - Total and Clear Cart */}
-        <div className="flex items-center gap-6">
-            <div className="bg-white px-6 py-3 rounded-xl shadow-md border border-red-100">
-                <div className="text-lg font-semibold text-gray-700">
-                    Total: <span className="font-bold text-red-700 text-2xl ml-2">₱{grandTotal.toFixed(2)}</span>
-                </div>
-            </div>
-           <button onClick={showClearCartConfirm} disabled={cart.length === 0}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                    cart.length === 0
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg hover:shadow-xl hover:from-red-700 hover:to-red-800 transform hover:-translate-y-1"
-                }`}>
-                Clear Cart
-            </button>
-        </div>
     </div>
-</div>
-                
-
+</div>                
                 <main className="p-6">
                     {/* Message */}
                     {message && (
@@ -1143,23 +1127,23 @@ return () => clearTimeout(timer);
                                                 const stockBadge = p.stock <= 0 ? "Out" : p.stock <= 5 ? "Low" : p.stock;
                                                 const stockColor = p.stock <= 0 ? "text-red-600" : p.stock <= 5 ? "text-yellow-600" : "text-green-600";
                                                 return (
-                                                    <div key={`product-${p.product_id}`} className={`bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 ${outOfStock ? "opacity-60" : "hover:shadow-lg hover:border-red-300 hover:-translate-y-1"}`}>
-                                                        <div className="p-4 flex-grow">
-                                                            <div className="text-center mb-3">
-                                                                <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-2 transition-colors">
-                                                                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                                                    </svg>
-                                                                </div>
-                                                            </div>
-                                                            <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{p.name}</h3>
-                                                            <div className="text-lg font-bold text-red-600 mb-2">₱{parseFloat(p.price).toFixed(2)}</div>
-                                                            <div className={`text-xs font-medium ${stockColor}`}>Stock: {stockBadge} {p.unit || "pcs"}</div>
-                                                        </div>
-                                                        <div className="p-2">
-                                                            <button onClick={() => addToCart(p.product_id, "product", null, p.name, p.price)} disabled={outOfStock} className="w-full py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed">Add to Cart</button>
-                                                        </div>
-                                                    </div>
+                                                    <div 
+    key={`product-${p.product_id}`} 
+    onClick={() => !outOfStock && addToCart(p.product_id, "product", null, p.name, p.price)}
+    className={`bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 ${outOfStock ? "opacity-60 cursor-not-allowed" : "hover:shadow-lg hover:border-red-300 hover:-translate-y-1 cursor-pointer"}`}>
+    <div className="p-4 flex-grow">
+        <div className="text-center mb-3">
+            <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-2 transition-colors">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            </div>
+        </div>
+        <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{p.name}</h3>
+        <div className="text-lg font-bold text-red-600 mb-2">₱{parseFloat(p.price).toFixed(2)}</div>
+        <div className={`text-xs font-medium ${stockColor}`}>Stock: {stockBadge} {p.unit || "pcs"}</div>
+    </div>
+</div>
                                                 );
                                             })}
 
@@ -1170,28 +1154,28 @@ return () => clearTimeout(timer);
                                                 const defaultSize = selectedServiceSizes[s.service_id]?.size || sizes[0];
                                                 const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
                                                 return (
-                                                    <div key={`service-${s.service_id}`} className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 hover:shadow-lg hover:border-red-300 hover:-translate-y-1">
-                                                        <div className="p-4 flex-grow">
-                                                            <div className="text-center mb-3">
-                                                                <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
-                                                                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                                    </svg>
-                                                                </div>
-                                                            </div>
-                                                            <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
-                                                            <div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
-                                                            <div className="mb-3 flex gap-1 flex-wrap justify-center">
-                                                                {sizes.map((sz) => {
-                                                                    const display = sz === "xlarge" ? "XL" : sz === "xxlarge" ? "XXL" : sz.charAt(0).toUpperCase();
-                                                                    return <button key={sz} className={`px-2 py-1 text-xs border rounded transition-colors ${selectedServiceSizes[s.service_id]?.size === sz ? "bg-red-800 text-white border-red-800" : "bg-white border-gray-300 hover:bg-gray-50"}`} onClick={(e) => { e.stopPropagation(); selectServiceSize(s.service_id, sz, s[sz]); }} title={`${sz.charAt(0).toUpperCase() + sz.slice(1)} - ₱${parseFloat(s[sz]).toFixed(2)}`}>{display}</button>;
-                                                                })}
-                                                            </div>
-                                                        </div>
-                                                        <div className="p-2">
-                                                            <button onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)} className="w-full py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 transition-colors text-sm font-medium">Add Service</button>
-                                                        </div>
-                                                    </div>
+                                                    <div 
+    key={`service-${s.service_id}`} 
+    onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
+    className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 hover:shadow-lg hover:border-red-300 hover:-translate-y-1 cursor-pointer">
+    <div className="p-4 flex-grow">
+        <div className="text-center mb-3">
+            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </div>
+        </div>
+        <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
+        <div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
+        <div className="mb-3 flex gap-1 flex-wrap justify-center">
+            {sizes.map((sz) => {
+                const display = sz === "xlarge" ? "XL" : sz === "xxlarge" ? "XXL" : sz.charAt(0).toUpperCase();
+                return <button key={sz} className={`px-2 py-1 text-xs border rounded transition-colors ${selectedServiceSizes[s.service_id]?.size === sz ? "bg-red-800 text-white border-red-800" : "bg-white border-gray-300 hover:bg-gray-50"}`} onClick={(e) => { e.stopPropagation(); selectServiceSize(s.service_id, sz, s[sz]); }} title={`${sz.charAt(0).toUpperCase() + sz.slice(1)} - ₱${parseFloat(s[sz]).toFixed(2)}`}>{display}</button>;
+            })}
+        </div>
+    </div>
+</div>
                                                 );
                                             })}
                                         </>
@@ -1251,7 +1235,7 @@ return () => clearTimeout(timer);
                                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
                                                                 : "bg-gradient-to-r from-red-800 to-red-900 text-white hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                                                             }`}>
-                                                            {outOfStock ? "Out of Stock" : "Add to Cart"}
+                                                            {outOfStock ? "Out of Stock" : "Select Product"}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1329,7 +1313,7 @@ return () => clearTimeout(timer);
                                                         <button 
                                                             onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)} 
                                                             className="w-full py-2 bg-gradient-to-r from-red-800 to-red-900 text-white rounded-lg hover:from-red-900 hover:to-red-800 transition-all duration-300 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                                                            Add Service
+                                                            Select Service
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1343,54 +1327,6 @@ return () => clearTimeout(timer);
                 </main>
             </div>
 
-            {/* Floating Cart Button */}
-            <FloatingCartButton 
-                totalItems={totalItems} 
-                onClick={() => setIsCartModalOpen(true)} 
-            />
-
-            {/* Cart Modal */}
-            <CartModal 
-                    isOpen={isCartModalOpen}
-                    onClose={() => {
-                    setIsCartModalOpen(false);
-                    setShowReceiptInModal(false);
-
-                            // If an order was completed, refresh the page to update stock levels
-                            if (orderCompleted) {
-                                window.location.reload();
-                            } else {
-                                // Just reload cart data if no order was completed
-                                loadCart();
-                            }
-                            
-                            // Reset the order completed flag
-                            setOrderCompleted(false);
-                        }}
-                    cart={cart}
-                    grandTotal={grandTotal}
-                    onAddItem={addToCart}
-                    onRemoveItem={removeFromCart}
-                    onRemoveAllOfItem={showRemoveItemConfirm}
-                    onCheckout={checkout}
-                    isProcessing={isProcessing}
-                    paymentMethod={paymentMethod}
-                    setPaymentMethod={setPaymentMethod}
-                    cashAmount={cashAmount}
-                    setCashAmount={setCashAmount}
-                    referenceNumber={referenceNumber}
-                    setReferenceNumber={setReferenceNumber}
-                    paymentProofFile={paymentProofFile}
-                    setPaymentProofFile={setPaymentProofFile}
-                    lastOrder={lastOrder}
-                    onPrintReceipt={printReceipt}
-                    showReceiptInModal={showReceiptInModal}
-                    setShowReceiptInModal={setShowReceiptInModal}
-                    prepareReceiptHtml={prepareReceiptHtml}
-                    orderCompleted={orderCompleted}
-                    setOrderCompleted={setOrderCompleted}
-                />
-
             {/* Hidden Receipt Template */}
             <div ref={receiptRef} className="hidden">
                 {lastOrder && (
@@ -1398,7 +1334,7 @@ return () => clearTimeout(timer);
                 )}
             </div>
 
-            {/* Custom Alert Modal */}
+           {/* Custom Alert Modal */}
             <AlertModal
                 isOpen={alertModal.isOpen}
                 onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
@@ -1409,6 +1345,33 @@ return () => clearTimeout(timer);
                 confirmText={alertModal.confirmText}
                 cancelText={alertModal.cancelText}
             />
+
+            {/* Side Panel - ORDER SUMMARY */}
+            <SidePanel 
+                cart={cart}
+                grandTotal={grandTotal}
+                onAddItem={addToCart}
+                onRemoveItem={removeFromCart}
+                onRemoveAllOfItem={showRemoveItemConfirm}
+                onCheckout={checkout}
+                isProcessing={isProcessing}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                cashAmount={cashAmount}
+                setCashAmount={setCashAmount}
+                referenceNumber={referenceNumber}
+                setReferenceNumber={setReferenceNumber}
+                paymentProofFile={paymentProofFile}
+                setPaymentProofFile={setPaymentProofFile}
+                lastOrder={lastOrder}
+                onPrintReceipt={printReceipt}
+                showReceiptInModal={showReceiptInModal}
+                setShowReceiptInModal={setShowReceiptInModal}
+                prepareReceiptHtml={prepareReceiptHtml}
+                orderCompleted={orderCompleted}
+                setOrderCompleted={setOrderCompleted}
+                onClearCart={showClearCartConfirm}
+            />
         </div>
-    );
+ );
 }

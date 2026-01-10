@@ -11,25 +11,22 @@ export default function LoginPage() {
     setMessage("");
 
     try {
-      const res = await fetch(
-        "https://caps-backend-production-c8c5.up.railway.app/auth/login",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-        }
-      );
+      const res = await fetch("https://caps-backend-production-2079.up.railway.app/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
       const data = await res.json();
 
       if (res.ok) {
-        // session + local storage
+        // Save login indicator
         sessionStorage.setItem("isLoggedIn", "1");
         localStorage.setItem("isLoggedIn", Date.now().toString());
 
         setMessage(data.message || "Login successful ✅");
 
-        // redirect to /pos
+        // Redirect after 350ms
         setTimeout(() => {
           window.location.replace("/pos");
         }, 350);
@@ -70,6 +67,7 @@ export default function LoginPage() {
             Login
           </button>
         </form>
+
         {message && (
           <p
             className={`text-center mt-3 ${

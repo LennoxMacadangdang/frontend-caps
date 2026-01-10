@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-const API_URL = "https://caps-backend-production-f8d8.up.railway.app/api/orders";
+const API_URL = "https://caps-backend-production-c81e.up.railway.app/api/orders";
 
 // Sidebar Component
 function Sidebar({ onLogout }) {
@@ -25,15 +25,15 @@ function Sidebar({ onLogout }) {
   return (
         <div className="fixed top-0 left-0 w-64 h-screen bg-gray-100 border-r-4 border-red-800 shadow-lg z-50 flex flex-col py-2 transition-transform duration-300 ease-in-out">
         {/* Company Logo Section */}
-        <div className="px-2 pb-2 border-b-1 border-gray-300 mb-5">
+        <div className="px-1 pb-1 border-b-2 border-gray-300 mb-5">
             {/* Company Logo Section */}
             <div className="flex flex-col items-center ">
             {/* Logo image above sidebar content */}
-            <div className="w-full h-20 bg-black flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
+            <div className="w-full h-30 bg-grey flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
     <img
-        src="https://url-shortener.me/5SGQ"
+        src="https://i.ibb.co/Jwq72QFQ/download.png"
         alt="Otto Bright Logo"
-        className="w-full h-full object-contain m-0 p-1"
+        className="w-full h-full object-contain m-0 p--5"
     />
     </div>
 
@@ -716,7 +716,7 @@ export default function TransactionsPage() {
                         { key: 'total_quantity', label: 'Quantity' },
                         { key: 'total_amount', label: 'Total' },
                         { key: 'payment_method', label: 'Payment Method' },
-                        { key: 'payment_proof', label: 'Status' },
+                        { key: 'payment_proof', label: 'Payment Info' },
                         { key: 'actions', label: 'Actions' }
                       ].map(({ key, label }) => (
                         <th

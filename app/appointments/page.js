@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-const API = "https://caps-backend-production-a67c.up.railway.app";
+const API = "https://caps-backend-production-1d9f.up.railway.app";
 
 // Sidebar Component
 function Sidebar({ onLogout }) {
@@ -25,15 +25,15 @@ function Sidebar({ onLogout }) {
   return (
         <div className="fixed top-0 left-0 w-64 h-screen bg-gray-100 border-r-4 border-red-800 shadow-lg z-50 flex flex-col py-2 transition-transform duration-300 ease-in-out">
         {/* Company Logo Section */}
-        <div className="px-2 pb-2 border-b-1 border-gray-300 mb-5">
+        <div className="px-1 pb-1 border-b-2 border-gray-300 mb-5">
             {/* Company Logo Section */}
             <div className="flex flex-col items-center ">
             {/* Logo image above sidebar content */}
-            <div className="w-full h-20 bg-black flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
+            <div className="w-full h-30 bg-grey flex items-center rounded-lg justify-center m-0 p-0 border-b-0 border-gray-300">
     <img
-        src="https://url-shortener.me/5SGQ"
+        src="https://i.ibb.co/Jwq72QFQ/download.png"
         alt="Otto Bright Logo"
-        className="w-full h-full object-contain m-0 p-1"
+        className="w-full h-full object-contain m-0 p--5"
     />
     </div>
 
@@ -253,7 +253,7 @@ function prepareAppointmentReceiptHtml(order, appointment) {
         <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">Sold to:</div>
         <div style="font-size: 11px; margin-bottom: 2px;">Customer Name: ${order.name}</div>
         <div style="font-size: 11px; margin-bottom: 2px;">Appointment ID: ${order.order_id}</div>
-        <div style="font-size: 11px; margin-bottom: 2px;">Vehicle: ${appointment.vehicleBrand || ''} ${appointment.vehicleModel || ''} (${appointment.vehicleColor || ''})</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Vehicle: ${appt.car_size})</div>
       </div>
 
       <!-- Services Table -->
@@ -317,6 +317,7 @@ export default function AppointmentsPage() {
   const router = useRouter();
   const [upcoming, setUpcoming] = useState([]);
   const [history, setHistory] = useState([]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const [customerName, setCustomerName] = useState("");
@@ -341,16 +342,26 @@ export default function AppointmentsPage() {
     type: 'success'
   });
 
+  // Payment proof modal state
+const [paymentProofModal, setPaymentProofModal] = useState({
+  isOpen: false,
+  imageUrl: ''
+});
+
+
   // fetch appointments
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-      const resUpcoming = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllUpcomingAppointments/pos`);
-      const resHistory = await fetch(`https://online-appointment-backend-ottobright-8eer.onrender.com/getAllHistoryAppointments/pos`);
+      const resUpcoming = await fetch(`https://caps-backend-production-1d9f.up.railway.app/getAllUpcomingAppointments`);
+      const resHistory = await fetch(`https://caps-backend-production-1d9f.up.railway.app/getAllHistoryAppointments`);
+      const resPending = await fetch(`https://caps-backend-production-1d9f.up.railway.app/getPendingAppointments`);
       const upcomingData = await resUpcoming.json();
       const historyData = await resHistory.json();
+      const pendingData = await resPending.json();
       setUpcoming(upcomingData.upcoming_appointments || []);
       setHistory(historyData.history_appointments || []);
+      setPendingApprovals(pendingData.pending_appointments || []);
     } catch (err) {
       console.error("Error fetching appointments", err);
     } finally {
@@ -361,6 +372,80 @@ export default function AppointmentsPage() {
   useEffect(() => {
     fetchAppointments();
   }, []);
+
+  const approveAppointment = (id) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Approve Appointment',
+      message: 'Are you sure you want to approve this appointment?',
+      type: 'complete',
+      confirmText: 'Approve',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await fetch(`${API}/approveAppointment/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          fetchAppointments();
+          setMessageModal({
+            isOpen: true,
+            title: 'Success',
+            message: 'Appointment has been approved successfully.',
+            type: 'success'
+          });
+        } catch (err) {
+          console.error("Error approving appointment", err);
+          setMessageModal({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to approve appointment. Please try again.',
+            type: 'error'
+          });
+        }
+      }
+    });
+  };
+
+  const rejectAppointment = (id) => {
+    setAlertModal({
+      isOpen: true,
+      title: 'Reject Appointment',
+      message: 'Are you sure you want to reject this appointment? This action cannot be undone.',
+      type: 'delete',
+      confirmText: 'Reject',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setAlertModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await fetch(`${API}/cancelAppointment/${id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          fetchAppointments();
+          setMessageModal({
+            isOpen: true,
+            title: 'Rejected',
+            message: 'Appointment has been rejected successfully.',
+            type: 'success'
+          });
+        } catch (err) {
+          console.error("Error rejecting appointment", err);
+          setMessageModal({
+            isOpen: true,
+            title: 'Error',
+            message: 'Failed to reject appointment. Please try again.',
+            type: 'error'
+          });
+        }
+      }
+    });
+  };
 
   const completeAppointment = (id) => {
     setAlertModal({
@@ -548,7 +633,20 @@ export default function AppointmentsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Pending Approval</p>
+                <p className="text-3xl font-bold text-gray-900 mt-2">{pendingApprovals.length}</p>
+              </div>
+              <div className="bg-amber-100 p-3 rounded-xl">
+                <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -577,6 +675,113 @@ export default function AppointmentsPage() {
           </div>
         </div>
 
+        {/* Appointments for Approval Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center">
+              <div className="bg-amber-100 p-2 rounded-lg mr-3">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">Appointments for Approval</h2>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle Size</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Proof</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {pendingApprovals.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center">
+                        <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-gray-500 text-lg">No pending approvals</p>
+                        <p className="text-gray-400 text-sm">New appointment requests will appear here</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  pendingApprovals.map((appt) => (
+                    <tr key={appt.appointment_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{appt.service_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{appt.date}</div>
+                        <div className="text-sm text-gray-500">{appt.time}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 uppercase">
+                          {appt.car_size} 
+                        </div>
+                        
+                      </td>
+                      <td className="px-6 py-4">
+                        {appt.paymentProof ? (
+                          <a 
+                            href={appt.paymentProof} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-block group"
+                          >
+                            <img 
+                              src={appt.paymentProof} 
+                              alt="Payment Proof" 
+                              className="w-24 h-24 object-cover rounded-lg border-2 border-gray-300 hover:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md group-hover:scale-105 transform duration-200"
+                            />
+                            <p className="text-xs text-center text-gray-500 mt-1 group-hover:text-blue-600">Click to view</p>
+                          </a>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center w-24 h-24 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+                            <svg className="w-8 h-8 text-gray-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-xs text-gray-400">No proof</p>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => approveAppointment(appt.appointment_id)}
+                            className="inline-flex items-center px-3 py-2 text-xs font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => rejectAppointment(appt.appointment_id)}
+                            className="inline-flex items-center px-3 py-2 text-xs font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Upcoming Appointments Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
           <div className="px-6 py-4 border-b border-gray-200">
@@ -596,7 +801,7 @@ export default function AppointmentsPage() {
                 <tr className="bg-gray-50">
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle Size</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -625,10 +830,10 @@ export default function AppointmentsPage() {
                         <div className="text-sm text-gray-500">{appt.time}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {appt.vehicleBrand} {appt.vehicleModel}
+                        <div className="text-sm text-gray-900 uppercase">
+                          {appt.car_size} 
                         </div>
-                        <div className="text-sm text-gray-500">({appt.vehicleColor})</div>
+
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-gray-900">
@@ -693,7 +898,7 @@ export default function AppointmentsPage() {
                 <tr className="bg-gray-50">
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle Size</th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                 </tr>
               </thead>
@@ -728,11 +933,10 @@ export default function AppointmentsPage() {
                         <div className="text-sm text-gray-500">{appt.time}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {appt.vehicleBrand} {appt.vehicleModel}
-                        </div>
-                        <div className="text-sm text-gray-500">({appt.vehicleColor})</div>
-                      </td>
+                      <div className="text-sm text-gray-900 uppercase">
+                        {appt.car_size || "N/A"}
+                      </div>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-gray-900">
                           ₱{appt.price || "N/A"}
