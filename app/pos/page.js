@@ -1208,12 +1208,14 @@ return () => clearTimeout(timer);
                                             const stockBadge = p.stock <= 0 ? "Out" : p.stock <= 5 ? "Low" : p.stock;
                                             const stockColor = p.stock <= 0 ? "text-red-600" : p.stock <= 5 ? "text-yellow-600" : "text-green-600";
                                             return (
-                                                <div key={`product-${p.product_id}`}
-                                                  className={`group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden ${
-                                                      outOfStock
-                                                      ? "opacity-50"
-                                                      : "hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105"
-                                                  }`}>
+                                                <div 
+                                                    key={`product-${p.product_id}`}
+                                                    onClick={() => !outOfStock && addToCart(p.product_id, "product", null, p.name, p.price)}
+                                                    className={`group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden ${
+                                                        outOfStock
+                                                        ? "opacity-50 cursor-not-allowed"
+                                                        : "hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105 cursor-pointer"
+                                                    }`}>
                                                     <div className="p-4 flex-grow">
                                                         <div className="text-center mb-3">
                                                             <div className="w-12 h-12 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-2 transition-colors">
@@ -1226,18 +1228,7 @@ return () => clearTimeout(timer);
                                                         <div className="text-lg font-bold text-red-600 mb-2">₱{parseFloat(p.price).toFixed(2)}</div>
                                                         <div className={`text-xs font-medium ${stockColor}`}>Stock: {stockBadge} {p.unit || "pcs"}</div>
                                                     </div>
-                                                    <div className="p-2">
-                                                        <button 
-                                                            onClick={() => addToCart(p.product_id, "product", null, p.name, p.price)} 
-                                                            disabled={outOfStock} 
-                                                            className={`w-full py-2 rounded-lg transition-all duration-300 text-sm font-medium ${
-                                                                outOfStock 
-                                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
-                                                                : "bg-gradient-to-r from-red-800 to-red-900 text-white hover:from-red-900 hover:to-red-800 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                                                            }`}>
-                                                            {outOfStock ? "Out of Stock" : "Select Product"}
-                                                        </button>
-                                                    </div>
+
                                                 </div>
                                             );
                                         })
@@ -1272,8 +1263,10 @@ return () => clearTimeout(timer);
                                             const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
                                             
                                             return (
-                                                <div key={`service-${s.service_id}`} 
-                                                    className="group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105">
+                                               <div 
+                                                key={`service-${s.service_id}`}
+                                                onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
+                                                className="group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105 cursor-pointer">
                                                     <div className="p-4 flex-grow">
                                                         <div className="text-center mb-3">
                                                             <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
@@ -1309,13 +1302,7 @@ return () => clearTimeout(timer);
                                                             })}
                                                         </div>
                                                     </div>
-                                                    <div className="p-2">
-                                                        <button 
-                                                            onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)} 
-                                                            className="w-full py-2 bg-gradient-to-r from-red-800 to-red-900 text-white rounded-lg hover:from-red-900 hover:to-red-800 transition-all duration-300 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-1">
-                                                            Select Service
-                                                        </button>
-                                                    </div>
+
                                                 </div>
                                             );
                                         })
