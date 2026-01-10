@@ -253,7 +253,7 @@ function prepareAppointmentReceiptHtml(order, appointment) {
         <div style="font-size: 11px; font-weight: bold; margin-bottom: 3px;">Sold to:</div>
         <div style="font-size: 11px; margin-bottom: 2px;">Customer Name: ${order.name}</div>
         <div style="font-size: 11px; margin-bottom: 2px;">Appointment ID: ${order.order_id}</div>
-        <div style="font-size: 11px; margin-bottom: 2px;">Vehicle: ${appt.car_size})</div>
+        <div style="font-size: 11px; margin-bottom: 2px;">Vehicle: ${appointment.car_size})</div>
       </div>
 
       <!-- Services Table -->
