@@ -348,6 +348,12 @@ const [paymentProofModal, setPaymentProofModal] = useState({
   imageUrl: ''
 });
 
+const [rejectModal, setRejectModal] = useState({
+  isOpen: false,
+  appointmentId: null,
+  reply_id: null
+});
+
 
   // fetch appointments
   const fetchAppointments = async () => {
@@ -410,42 +416,85 @@ const [paymentProofModal, setPaymentProofModal] = useState({
     });
   };
 
-  const rejectAppointment = (id) => {
-    setAlertModal({
+const openRejectModal = (id) => {
+    setRejectModal({
       isOpen: true,
-      title: 'Reject Appointment',
-      message: 'Are you sure you want to reject this appointment? This action cannot be undone.',
-      type: 'delete',
-      confirmText: 'Reject',
-      cancelText: 'Cancel',
-      onConfirm: async () => {
-        setAlertModal(prev => ({ ...prev, isOpen: false }));
-        try {
-          await fetch(`${API}/cancelAppointment/${id}`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          fetchAppointments();
-          setMessageModal({
-            isOpen: true,
-            title: 'Rejected',
-            message: 'Appointment has been rejected successfully.',
-            type: 'success'
-          });
-        } catch (err) {
-          console.error("Error rejecting appointment", err);
-          setMessageModal({
-            isOpen: true,
-            title: 'Error',
-            message: 'Failed to reject appointment. Please try again.',
-            type: 'error'
-          });
-        }
-      }
+      appointmentId: id,
+      reply_id: null
     });
   };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectModal.reply_id) {
+      setMessageModal({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please select a reason for rejecting the appointment.',
+        type: 'error'
+      });
+      return;
+    }
+
+    const url = `https://caps-backend-production-1d9f.up.railway.app/rejectAppointment/${rejectModal.appointmentId}`;
+    const payload = { reply_id: rejectModal.reply_id };
+    
+    console.log('=== REJECT APPOINTMENT DEBUG ===');
+    console.log('Full URL:', url);
+    console.log('Payload:', payload);
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('Response headers:', response.headers.get('content-type'));
+
+      // Get the raw response text first
+      const responseText = await response.text();
+      console.log('Raw response text:', responseText);
+
+      // Try to parse it as JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Parsed JSON data:', data);
+      } catch (jsonErr) {
+        console.error('Failed to parse JSON. Response was:', responseText);
+        throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 100)}`);
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || `Server error: ${response.status}`);
+      }
+
+      setRejectModal({ isOpen: false, appointmentId: null, reply_id: null });
+      fetchAppointments();
+
+      setMessageModal({
+        isOpen: true,
+        title: 'Rejected',
+        message: 'Appointment has been rejected successfully.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('=== ERROR CAUGHT ===');
+      console.error('Error message:', err.message);
+      
+      setMessageModal({
+        isOpen: true,
+        title: 'Error',
+        message: err.message || 'Failed to reject appointment. Please try again.',
+        type: 'error'
+      });
+    }
+  };
+
 
   const completeAppointment = (id) => {
     setAlertModal({
@@ -458,7 +507,7 @@ const [paymentProofModal, setPaymentProofModal] = useState({
       onConfirm: async () => {
         setAlertModal(prev => ({ ...prev, isOpen: false }));
         try {
-          await fetch(`${API}/updateAppointmentStatus/${id}`, {
+          await fetch(`https://caps-backend-production-1d9f.up.railway.app/updateAppointmentStatus/${id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json'
@@ -584,6 +633,8 @@ const [paymentProofModal, setPaymentProofModal] = useState({
   setTimeout(() => printWindow.print(), 500);
   closeReceipt();
 };
+
+
 
   return (
     <div className="flex bg-gray-50 min-h-screen">
@@ -764,14 +815,15 @@ const [paymentProofModal, setPaymentProofModal] = useState({
                             Approve
                           </button>
                           <button 
-                            onClick={() => rejectAppointment(appt.appointment_id)}
+                            onClick={() => openRejectModal(appt.appointment_id)}
                             className="inline-flex items-center px-3 py-2 text-xs font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                           >
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                            Reject
-                          </button>
+  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+  Reject
+</button>
+
                         </div>
                       </td>
                     </tr>
@@ -1038,6 +1090,71 @@ const [paymentProofModal, setPaymentProofModal] = useState({
             </div>
           </div>
         )}
+
+  <>
+    
+<>
+    {/* Reject Modal */}
+    {rejectModal.isOpen && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all">
+          <div className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Reject Appointment</h3>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                Please select a reason for rejecting this appointment.
+              </p>
+
+              <select
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all"
+                value={rejectModal.reply_id || ""}
+                onChange={(e) =>
+                  setRejectModal(prev => ({
+                    ...prev,
+                    reply_id: Number(e.target.value)
+                  }))
+                }
+              >
+                <option value="" disabled>Select a reason</option>
+                <option value={1}>No available slots</option>
+                <option value={2}>Staff unavailable</option>
+                <option value={3}>Invalid request</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setRejectModal({ isOpen: false, appointmentId: null, reply_id: null })}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!rejectModal.reply_id}
+                onClick={handleRejectConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:ring-4 focus:ring-red-200 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Reject Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
+);
+  </>
+);
 
         {/* Custom Alert Modal */}
         <AlertModal

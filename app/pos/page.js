@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 const API_BASE = "https://caps-backend-production-59fe.up.railway.app";
 
 // Side Panel Component for Selected Items
-function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt, showReceiptInModal, setShowReceiptInModal, prepareReceiptHtml, orderCompleted, setOrderCompleted, onClearCart }) {
+function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfItem, onCheckout, isProcessing, paymentMethod, setPaymentMethod, cashAmount, setCashAmount, referenceNumber, setReferenceNumber, paymentProofFile, setPaymentProofFile, lastOrder, onPrintReceipt, showReceiptInModal, setShowReceiptInModal, prepareReceiptHtml, orderCompleted, setOrderCompleted, onClearCart, products }) {
     function groupCartItems(arr) {
         const grouped = {};
         arr.forEach((item) => {
@@ -25,7 +25,7 @@ function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfIte
                 <p className="text-sm text-red-100 mt-1">Select items to add to order</p>
             </div>
 
-            {/* Cart Items */}
+{/* Cart Items */}
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
                 {groupCartItems(cart).length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
@@ -37,7 +37,17 @@ function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfIte
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {groupCartItems(cart).map((item) => (
+                        {groupCartItems(cart).map((item) => {
+                            // Get stock info for products
+                            let maxStock = null;
+                            let atMaxStock = false;
+                            if (item.type === "product") {
+                                const product = products.find(p => p.product_id === item.id);
+                                maxStock = product?.stock;
+                                atMaxStock = maxStock !== null && item.quantity >= maxStock;
+                            }
+                            
+                            return (
                             <div key={`${item.type}_${item.id}_${item.size}`} className="flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors border border-gray-100 shadow-sm">
                                 <div className="flex-1 pr-4">
                                     <div className="font-semibold text-gray-800">{item.name}</div>
@@ -48,6 +58,11 @@ function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfIte
                                     <div className="text-sm font-medium text-red-600 mt-1">
                                         ₱{parseFloat(item.price || 0).toFixed(2)} each
                                     </div>
+                                    {atMaxStock && (
+                                        <div className="text-xs text-amber-600 font-medium mt-1">
+                                            ⚠️ Max stock reached
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-3">
@@ -55,7 +70,18 @@ function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfIte
                                     <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
                                         <button onClick={() => onRemoveItem(item.id, item.type, item.size || null)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-800 hover:bg-red-200 font-bold transition-colors hover:scale-110">-</button>
                                         <span className="w-8 text-center font-semibold text-gray-700">{item.quantity}</span>
-                                        <button onClick={() => onAddItem(item.id, item.type, item.size || null, item.name, item.price)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-800 hover:bg-green-200 font-bold transition-colors hover:scale-110">+</button>
+                                        <button 
+                                            onClick={() => onAddItem(item.id, item.type, item.size || null, item.name, item.price)} 
+                                            disabled={atMaxStock}
+                                            className={`flex items-center justify-center w-8 h-8 rounded-lg font-bold transition-colors ${
+                                                atMaxStock 
+                                                ? "bg-gray-200 text-gray-400 cursor-not-allowed" 
+                                                : "bg-green-100 text-green-800 hover:bg-green-200 hover:scale-110"
+                                            }`}
+                                            title={atMaxStock ? "Maximum stock reached" : "Add one more"}
+                                        >
+                                            +
+                                        </button>
                                     </div>
 
                                     {/* Remove All Button */}
@@ -66,7 +92,7 @@ function SidePanel({ cart, grandTotal, onAddItem, onRemoveItem, onRemoveAllOfIte
                                     </button>
                                 </div>
                             </div>
-                        ))}
+                        )})}
                     </div>
                 )}
             </div>
@@ -432,32 +458,63 @@ const [alertModal, setAlertModal] = useState({
         }
     }
 
-    async function loadServices() {
-        try {
-            const res = await fetch(`https://caps-backend-production-59fe.up.railway.app/services`);
-            if (!res.ok) throw new Error(`${res.status}`);
-            const data = await res.json();
-            setServices(data || []);
-            // initialize default selected sizes
-            const map = {};
-            (data || []).forEach((s) => {
-                const sizes = ["small", "medium", "large", "xlarge", "xxlarge"].filter(
-                    (size) => s[size] !== null && s[size] !== undefined
-                );
-                if (sizes.length > 0) {
-                    map[s.service_id] = {
-                        size: sizes[0],
-                        price: parseFloat(s[sizes[0]]),
-                    };
-                }
-            });
-            setSelectedServiceSizes(map);
-        } catch (err) {
-            console.error("loadServices", err);
-            showMessage("Failed to load services", "error");
+async function loadServices() {
+    try {
+        const res = await fetch(`${API_BASE}/services`);
+        if (!res.ok) throw new Error(`${res.status}`);
+        
+        const data = await res.json();
+        console.log("📦 Full response object:", data);
+        console.log("📦 Object keys:", Object.keys(data));
+        
+        // Check different possible structures
+        let servicesArray = [];
+        
+        if (Array.isArray(data)) {
+            servicesArray = data;
+        } else if (data.services && Array.isArray(data.services)) {
+            servicesArray = data.services;
+        } else if (data.data && Array.isArray(data.data)) {
+            servicesArray = data.data;
+        } else if (data.items && Array.isArray(data.items)) {
+            servicesArray = data.items;
         }
+        
+        // Don't filter out inactive services - keep them all
+        console.log("✅ Total services length:", servicesArray.length);
+        console.log("✅ First service:", servicesArray[0]);
+        
+        setServices(servicesArray);
+        
+        // initialize default selected sizes ONLY for active services
+        const map = {};
+        servicesArray.forEach((s) => {
+            if (!s || !s.service_id) return;
+            
+            // Skip initializing selection for inactive services
+            if (s.active === false) return;
+            
+            const sizes = ["small", "medium", "large", "xlarge", "xxlarge"].filter(
+                (size) => s[size] !== null && s[size] !== undefined
+            );
+            
+            if (sizes.length > 0) {
+                map[s.service_id] = {
+                    size: sizes[0],
+                    price: parseFloat(s[sizes[0]]),
+                };
+            }
+        });
+        
+        setSelectedServiceSizes(map);
+        console.log("✅ Total services loaded:", servicesArray.length);
+        console.log("✅ Active services with selections:", Object.keys(map).length);
+    } catch (err) {
+        console.error("❌ loadServices error:", err);
+        showMessage("Failed to load services", "error");
+        setServices([]);
     }
-
+}
     async function loadCart() {
         try {
             const res = await fetch(`${API_BASE}/cart`);
@@ -483,6 +540,32 @@ const [alertModal, setAlertModal] = useState({
     // ---- CART OPERATIONS ----
 async function addToCart(id, type, size = null, name = null, price = null) {
     try {
+        // ✅ Stock validation for products BEFORE adding to cart
+        if (type === "product") {
+            // Find the product to check stock
+            const product = products.find(p => p.product_id === id);
+            if (!product) {
+                showMessage("Product not found", "error");
+                return;
+            }
+
+            // Check current quantity in cart
+            const currentCartQty = cart
+                .filter(item => item.id === id && item.type === "product")
+                .reduce((sum, item) => sum + item.quantity, 0);
+
+            // Check if adding 1 more would exceed stock
+            if (currentCartQty >= product.stock) {
+                showMessage(`Cannot add more! Only ${product.stock} ${product.unit || "pcs"} available in stock.`, "error");
+                return;
+            }
+
+            if (product.stock <= 0) {
+                showMessage("This product is out of stock!", "error");
+                return;
+            }
+        }
+
         const body = { 
             id, 
             type, 
@@ -511,9 +594,6 @@ async function addToCart(id, type, size = null, name = null, price = null) {
         showMessage("Failed to add to cart: " + err.message, "error");
     }
 }
-
-
-
 
     async function removeFromCart(id, type, size = null) {
     try {
@@ -1124,7 +1204,7 @@ return () => clearTimeout(timer);
                                             {/* Render filtered products */}
                                             {filterItems(products, 'product').map((p) => {
                                                 const outOfStock = p.stock <= 0;
-                                                const stockBadge = p.stock <= 0 ? "Out" : p.stock <= 5 ? "Low" : p.stock;
+                                                const stockBadge = p.stock <= 0 ? "Out" :  p.stock;
                                                 const stockColor = p.stock <= 0 ? "text-red-600" : p.stock <= 5 ? "text-yellow-600" : "text-green-600";
                                                 return (
                                                     <div 
@@ -1153,25 +1233,27 @@ return () => clearTimeout(timer);
                                                 if (sizes.length === 0) return null;
                                                 const defaultSize = selectedServiceSizes[s.service_id]?.size || sizes[0];
                                                 const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
+                                                const isInactive = s.active === false;
                                                 return (
                                                     <div 
     key={`service-${s.service_id}`} 
-    onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
-    className="bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 hover:shadow-lg hover:border-red-300 hover:-translate-y-1 cursor-pointer">
+    onClick={isInactive ? undefined : () => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
+    className={`bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 ${isInactive ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:border-red-300 hover:-translate-y-1 cursor-pointer'}`}>
     <div className="p-4 flex-grow">
         <div className="text-center mb-3">
-            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className={`w-12 h-12 mx-auto ${isInactive ? 'bg-gray-100' : 'bg-green-100'} rounded-full flex items-center justify-center mb-2`}>
+                <svg className={`w-6 h-6 ${isInactive ? 'text-gray-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             </div>
         </div>
         <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
-        <div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
+        {isInactive && <div className="text-xs text-gray-500 mb-2 text-center">Currently Unavailable</div>}
+        <div className={`text-lg font-bold ${isInactive ? 'text-gray-400' : 'text-red-600'} mb-3`}>₱{Number(defaultPrice).toFixed(2)}</div>
         <div className="mb-3 flex gap-1 flex-wrap justify-center">
             {sizes.map((sz) => {
                 const display = sz === "xlarge" ? "XL" : sz === "xxlarge" ? "XXL" : sz.charAt(0).toUpperCase();
-                return <button key={sz} className={`px-2 py-1 text-xs border rounded transition-colors ${selectedServiceSizes[s.service_id]?.size === sz ? "bg-red-800 text-white border-red-800" : "bg-white border-gray-300 hover:bg-gray-50"}`} onClick={(e) => { e.stopPropagation(); selectServiceSize(s.service_id, sz, s[sz]); }} title={`${sz.charAt(0).toUpperCase() + sz.slice(1)} - ₱${parseFloat(s[sz]).toFixed(2)}`}>{display}</button>;
+                return <button key={sz} className={`px-2 py-1 text-xs border rounded transition-colors ${isInactive ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' : selectedServiceSizes[s.service_id]?.size === sz ? "bg-red-800 text-white border-red-800" : "bg-white border-gray-300 hover:bg-gray-50"}`} onClick={(e) => { if (isInactive) return; e.stopPropagation(); selectServiceSize(s.service_id, sz, s[sz]); }} title={isInactive ? 'Currently Unavailable' : `${sz.charAt(0).toUpperCase() + sz.slice(1)} - ₱${parseFloat(s[sz]).toFixed(2)}`} disabled={isInactive}>{display}</button>;
             })}
         </div>
     </div>
@@ -1205,7 +1287,7 @@ return () => clearTimeout(timer);
                                     ) : (
                                         filterItems(products, 'product').map((p) => {
                                             const outOfStock = p.stock <= 0;
-                                            const stockBadge = p.stock <= 0 ? "Out" : p.stock <= 5 ? "Low" : p.stock;
+                                            const stockBadge = p.stock <= 0 ? "Out" : p.stock;
                                             const stockColor = p.stock <= 0 ? "text-red-600" : p.stock <= 5 ? "text-yellow-600" : "text-green-600";
                                             return (
                                                 <div 
@@ -1334,31 +1416,32 @@ return () => clearTimeout(timer);
             />
 
             {/* Side Panel - ORDER SUMMARY */}
-            <SidePanel 
-                cart={cart}
-                grandTotal={grandTotal}
-                onAddItem={addToCart}
-                onRemoveItem={removeFromCart}
-                onRemoveAllOfItem={showRemoveItemConfirm}
-                onCheckout={checkout}
-                isProcessing={isProcessing}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                cashAmount={cashAmount}
-                setCashAmount={setCashAmount}
-                referenceNumber={referenceNumber}
-                setReferenceNumber={setReferenceNumber}
-                paymentProofFile={paymentProofFile}
-                setPaymentProofFile={setPaymentProofFile}
-                lastOrder={lastOrder}
-                onPrintReceipt={printReceipt}
-                showReceiptInModal={showReceiptInModal}
-                setShowReceiptInModal={setShowReceiptInModal}
-                prepareReceiptHtml={prepareReceiptHtml}
-                orderCompleted={orderCompleted}
-                setOrderCompleted={setOrderCompleted}
-                onClearCart={showClearCartConfirm}
-            />
+<SidePanel 
+    cart={cart}
+    grandTotal={grandTotal}
+    onAddItem={addToCart}
+    onRemoveItem={removeFromCart}
+    onRemoveAllOfItem={showRemoveItemConfirm}
+    onCheckout={checkout}
+    isProcessing={isProcessing}
+    paymentMethod={paymentMethod}
+    setPaymentMethod={setPaymentMethod}
+    cashAmount={cashAmount}
+    setCashAmount={setCashAmount}
+    referenceNumber={referenceNumber}
+    setReferenceNumber={setReferenceNumber}
+    paymentProofFile={paymentProofFile}
+    setPaymentProofFile={setPaymentProofFile}
+    lastOrder={lastOrder}
+    onPrintReceipt={printReceipt}
+    showReceiptInModal={showReceiptInModal}
+    setShowReceiptInModal={setShowReceiptInModal}
+    prepareReceiptHtml={prepareReceiptHtml}
+    orderCompleted={orderCompleted}
+    setOrderCompleted={setOrderCompleted}
+    onClearCart={showClearCartConfirm}
+    products={products}
+/>
         </div>
  );
 }
