@@ -1235,21 +1235,25 @@ return () => clearTimeout(timer);
                                                 const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
                                                 const isInactive = s.active === false;
                                                 return (
-                                                    <div 
-    key={`service-${s.service_id}`} 
+                                                   <div 
+    key={`service-${s.service_id}`}
     onClick={isInactive ? undefined : () => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
-    className={`bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col transition-all duration-200 ${isInactive ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg hover:border-red-300 hover:-translate-y-1 cursor-pointer'}`}>
+    className={`group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden ${
+        isInactive 
+        ? 'opacity-50 cursor-not-allowed' 
+        : 'hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105 cursor-pointer'
+    }`}>
     <div className="p-4 flex-grow">
         <div className="text-center mb-3">
-            <div className={`w-12 h-12 mx-auto ${isInactive ? 'bg-gray-100' : 'bg-green-100'} rounded-full flex items-center justify-center mb-2`}>
-                <svg className={`w-6 h-6 ${isInactive ? 'text-gray-400' : 'text-green-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             </div>
         </div>
-        <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
-        {isInactive && <div className="text-xs text-gray-500 mb-2 text-center">Currently Unavailable</div>}
-        <div className={`text-lg font-bold ${isInactive ? 'text-gray-400' : 'text-red-600'} mb-3`}>₱{Number(defaultPrice).toFixed(2)}</div>
+       <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
+{isInactive && <div className="text-xs text-red-600 font-medium mb-2 text-center">No Stocks</div>}
+<div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
         <div className="mb-3 flex gap-1 flex-wrap justify-center">
             {sizes.map((sz) => {
                 const display = sz === "xlarge" ? "XL" : sz === "xxlarge" ? "XXL" : sz.charAt(0).toUpperCase();
@@ -1337,18 +1341,23 @@ return () => clearTimeout(timer);
                                                 {searchQuery ? "No services found" : "No services available"}
                                             </p>
                                         </div>
-                                    ) : (
-                                        filterItems(services, 'service').map((s) => {
-                                            const sizes = ["small", "medium", "large", "xlarge", "xxlarge"].filter((sz) => s[sz] !== null && s[sz] !== undefined);
-                                            if (sizes.length === 0) return null;
-                                            const defaultSize = selectedServiceSizes[s.service_id]?.size || sizes[0];
-                                            const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
-                                            
-                                            return (
-                                               <div 
-                                                key={`service-${s.service_id}`}
-                                                onClick={() => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
-                                                className="group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105 cursor-pointer">
+                                   ) : (
+    filterItems(services, 'service').map((s) => {
+        const sizes = ["small", "medium", "large", "xlarge", "xxlarge"].filter((sz) => s[sz] !== null && s[sz] !== undefined);
+        if (sizes.length === 0) return null;
+        const defaultSize = selectedServiceSizes[s.service_id]?.size || sizes[0];
+        const defaultPrice = selectedServiceSizes[s.service_id]?.price ?? parseFloat(s[defaultSize]);
+        const isInactive = s.active === false;
+        
+        return (
+           <div 
+            key={`service-${s.service_id}`}
+            onClick={isInactive ? undefined : () => addToCart(s.service_id, "service", selectedServiceSizes[s.service_id]?.size || null, s.service_name, selectedServiceSizes[s.service_id]?.price || null)}
+            className={`group relative bg-white border-2 border-gray-100 rounded-2xl shadow-md flex flex-col transition-all duration-300 overflow-hidden ${
+                isInactive 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:shadow-2xl hover:border-red-200 hover:-translate-y-3 hover:scale-105 cursor-pointer'
+            }`}>
                                                     <div className="p-4 flex-grow">
                                                         <div className="text-center mb-3">
                                                             <div className="w-12 h-12 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-200 transition-colors">
@@ -1357,8 +1366,9 @@ return () => clearTimeout(timer);
                                                                 </svg>
                                                             </div>
                                                         </div>
-                                                        <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
-                                                        <div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
+                                                      <h3 className="font-semibold text-gray-800 text-sm mb-2 line-clamp-2">{s.service_name}</h3>
+{isInactive && <div className="text-xs text-red-600 font-medium mb-2 text-center">No Stocks</div>}
+<div className="text-lg font-bold text-red-600 mb-3">₱{Number(defaultPrice).toFixed(2)}</div>
                                                         
                                                         {/* Size Selection */}
                                                         <div className="mb-3 flex gap-1 flex-wrap justify-center">
