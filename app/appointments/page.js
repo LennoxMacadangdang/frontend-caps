@@ -1126,9 +1126,9 @@ const openRejectModal = (id) => {
                 }
               >
                 <option value="" disabled>Select a reason</option>
-                <option value={1}>No available slots</option>
-                <option value={2}>Staff unavailable</option>
-                <option value={3}>Invalid request</option>
+                <option value={1}>Blurred Proof of Payment. Please upload a new one</option>
+                <option value={2}>No payment received. Please upload a new one</option>
+                <option value={3}>This appointment has been rejected too many time. Please upload a new one</option>
               </select>
             </div>
 
